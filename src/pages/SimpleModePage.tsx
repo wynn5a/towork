@@ -7,6 +7,7 @@ import { useDoubleShift } from "../lib/useDoubleShift";
 import { useUI } from "../lib/ui";
 import { Avatar } from "../components/ui";
 import { Icon } from "../lib/icons";
+import { enterSimpleWindow, exitSimpleWindow } from "../lib/window";
 
 /** Past this length the inline add hands off to the full new-todo dialog. */
 const TITLE_HANDOFF_LIMIT = 50;
@@ -33,6 +34,14 @@ export function SimpleModePage() {
 
   useEffect(() => {
     inputRef.current?.focus();
+  }, []);
+  // Shrink the window to the narrow Simple-mode width on enter, and animate it
+  // back to the Complete-mode width when leaving (unmount = switching modes).
+  useEffect(() => {
+    enterSimpleWindow();
+    return () => {
+      exitSimpleWindow();
+    };
   }, []);
   useEffect(() => {
     if (sel >= todos.length) setSel(Math.max(0, todos.length - 1));
