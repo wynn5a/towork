@@ -36,8 +36,11 @@ export function Sidebar() {
   const isTodos = loc.pathname === "/";
   const isProjects = loc.pathname === "/projects";
 
+  // The pen button creates a todo: in the active project if viewing one, else
+  // the first project. With no projects yet, fall back to creating a project.
   function compose() {
-    if (activeProjectId) ui.openItemModal({ kind: "todo", projectId: activeProjectId });
+    const targetProject = activeProjectId ?? projects[0]?.id;
+    if (targetProject) ui.openItemModal({ kind: "todo", projectId: targetProject });
     else ui.openProjectModal();
   }
 
@@ -52,7 +55,7 @@ export function Sidebar() {
         </span>
         <button
           className="icon-btn"
-          title="New (N)"
+          title="New todo"
           style={{ marginLeft: "auto" }}
           onClick={compose}
         >

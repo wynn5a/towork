@@ -18,6 +18,8 @@ export interface ItemModalConfig {
   kind: ItemKind;
   projectId: string;
   itemId?: string;
+  /** Prefill for a new item, e.g. when a quick-add input hands off a long title. */
+  draft?: { title?: string; description?: string; priority?: Priority; assignee?: Assignee };
 }
 
 type PropKey = "status" | "priority" | "assignee";
@@ -33,17 +35,30 @@ export function ItemModal({
   const existing = config.itemId ? items.find((i) => i.id === config.itemId) : undefined;
   const project = projectById(config.projectId);
 
-  const [title, setTitle] = useState(existing?.title ?? "");
-  const [desc, setDesc] = useState(existing?.description ?? "");
+  const [title, setTitle] = useState(existing?.title ?? config.draft?.title ?? "");
+  const [desc, setDesc] = useState(existing?.description ?? config.draft?.description ?? "");
   const [status, setStatus] = useState<Status>(existing?.status ?? "Open");
-  const [priority, setPriority] = useState<Priority>(existing?.priority ?? "Medium");
-  const [assignee, setAssignee] = useState<Assignee>(existing?.assignee ?? "User");
+  const [priority, setPriority] = useState<Priority>(
+    existing?.priority ?? config.draft?.priority ?? "Medium"
+  );
+  const [assignee, setAssignee] = useState<Assignee>(
+    existing?.assignee ?? config.draft?.assignee ?? "User"
+  );
   const [createMore, setCreateMore] = useState(false);
   const [menu, setMenu] = useState<{ key: PropKey; pos: MenuPos } | null>(null);
 
   const titleRef = useRef<HTMLInputElement>(null);
+  const descRef = useRef<HTMLTextAreaElement>(null);
   useEffect(() => {
-    titleRef.current?.focus();
+    // On handoff from a quick-add input the typed text lands in the description,
+    // so keep the caret there (at the end) where the user was typing. Otherwise
+    // focus the title.
+    const handoff = !existing && !!config.draft?.description && !config.draft?.title;
+    const el = handoff ? descRef.current : titleRef.current;
+    if (!el) return;
+    el.focus();
+    const len = el.value.length;
+    el.setSelectionRange(len, len);
   }, []);
 
   const kind = existing?.kind ?? config.kind;
@@ -181,6 +196,7 @@ export function ItemModal({
             }}
           />
           <textarea
+            ref={descRef}
             id="f-desc"
             className="idlg-desc"
             placeholder="Add description…"

@@ -22,33 +22,11 @@ button { font-family: inherit; }
 [data-density="comfortable"] { --d-scale: 1.18; }
 
 /* ----------------------------------------------------------------
-   Window chrome (desktop app — Tauri)
----------------------------------------------------------------- */
-.titlebar {
-  height: 36px; flex-shrink: 0;
-  display: flex; align-items: center; gap: 12px;
-  padding: 0 14px;
-  background: var(--bg-base);
-  border-bottom: 1px solid var(--border-soft);
-  -webkit-user-select: none; user-select: none;
-}
-.traffic { display: flex; gap: 8px; }
-.traffic i { width: 12px; height: 12px; border-radius: 99px; display: block; }
-.traffic .r { background: #ec6a5e; }
-.traffic .y { background: #f4bf50; }
-.traffic .g { background: #61c454; }
-.titlebar .tb-title {
-  font-size: 12px; font-weight: 500; color: var(--text-3);
-  letter-spacing: -0.01em; flex: 1; text-align: center;
-}
-.titlebar .tb-spacer { width: 52px; }
-
-/* ----------------------------------------------------------------
-   Shell layout
+   Shell layout — the window uses the native OS title bar (no custom chrome).
 ---------------------------------------------------------------- */
 .shell {
   display: flex;
-  height: calc(100vh - 36px);
+  height: 100vh;
 }
 
 /* ----------------------------------------------------------------
@@ -267,6 +245,8 @@ button { font-family: inherit; }
 .quick-add input::placeholder { color: var(--text-4); }
 .quick-add .qa-proj { flex-shrink: 0; padding: 4px 9px 4px 5px; }
 .quick-add .qa-proj .pr-glyph { width: 18px; height: 18px; border-radius: 5px; display: grid; place-items: center; font-size: 0; flex-shrink: 0; }
+.quick-add .qa-assignee { flex-shrink: 0; padding: 4px 9px 4px 5px; }
+.quick-add .qa-assignee .avatar { flex-shrink: 0; }
 
 /* ----------------------------------------------------------------
    Tabs (DS underline tabs)
@@ -293,6 +273,25 @@ button { font-family: inherit; }
 }
 .section-label:first-child { margin-top: 0; }
 .section-label .count { margin-left: 0; }
+
+/* List pagination (shown when a section exceeds PAGE_SIZE). */
+.pager {
+  display: flex; align-items: center; justify-content: flex-end; gap: 10px;
+  margin-top: 8px; padding: 2px 2px 0;
+}
+.pager-info {
+  font-family: var(--mono); font-size: 11px; color: var(--text-4);
+  min-width: 46px; text-align: center;
+}
+.pager-btn {
+  width: 26px; height: 26px; border-radius: var(--radius-sm);
+  display: grid; place-items: center; cursor: pointer;
+  color: var(--text-3); background: var(--bg-elevated);
+  border: 1px solid var(--border-soft);
+  transition: background-color var(--dur-2) var(--ease), color var(--dur-2) var(--ease);
+}
+.pager-btn:hover:not(:disabled) { background: var(--bg-hover); color: var(--text-1); }
+.pager-btn:disabled { opacity: 0.4; cursor: default; }
 
 /* flat, dense Linear-style rows */
 .item-row {

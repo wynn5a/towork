@@ -1,11 +1,11 @@
 import { useEffect } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
-import { Titlebar } from "./components/Titlebar";
 import { Sidebar } from "./components/Sidebar";
 import { useUI } from "./lib/ui";
 import { useDoubleShift } from "./lib/useDoubleShift";
 
-/** Main application shell: title bar + sidebar + routed content. */
+/** Main application shell: sidebar + routed content. The window uses the
+ *  native OS title bar (no custom chrome). */
 export function App() {
   const ui = useUI();
   const navigate = useNavigate();
@@ -25,17 +25,14 @@ export function App() {
   }, [ui]);
 
   return (
-    <>
-      <Titlebar />
-      <div className="shell">
-        <Sidebar />
-        <main className="main">
-          {/* Re-mount per route so the fade-in replays and scroll resets. */}
-          <div className="main-scroll" key={location.pathname}>
-            <Outlet />
-          </div>
-        </main>
-      </div>
-    </>
+    <div className="shell">
+      <Sidebar />
+      <main className="main">
+        {/* Re-mount per route so the fade-in replays and scroll resets. */}
+        <div className="main-scroll" key={location.pathname}>
+          <Outlet />
+        </div>
+      </main>
+    </div>
   );
 }

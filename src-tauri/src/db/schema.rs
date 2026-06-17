@@ -459,3 +459,304 @@ pub fn search_items(
         .collect();
     Ok((todos, issues))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::models::Actor;
+
+    /// In-memory DB with the real schema/migrations and foreign keys enabled,
+    /// matching `db::init_db`.
+    fn test_conn() -> rusqlite::Connection {
+        let conn = rusqlite::Connection::open_in_memory().unwrap();
+        conn.execute_batch("PRAGMA foreign_keys = ON;").unwrap();
+        crate::db::migrations::run_migrations(&conn).unwrap();
+        conn
+    }
+
+    fn seed_project(conn: &rusqlite::Connection) -> Project {
+        let p = Project::new("Proj".into(), Some("desc".into()));
+        insert_project(conn, &p).unwrap();
+        p
+    }
+
+    /* --------------------------- projects --------------------------- */
+
+    #[test]
+    fn project_insert_query_update_delete() {
+        let conn = test_conn();
+        let p = seed_project(&conn);
+
+        let fetched = query_project(&conn, &p.id).unwrap().unwrap();
+        assert_eq!(fetched.name, "Proj");
+        assert_eq!(fetched.description.as_deref(), Some("desc"));
+
+        update_project(&conn, &p.id, Some("Renamed"), None).unwrap();
+        let after = query_project(&conn, &p.id).unwrap().unwrap();
+        assert_eq!(after.name, "Renamed");
+        assert_eq!(after.description.as_deref(), Some("desc")); // unchanged
+
+        update_project(&conn, &p.id, None, Some("new desc")).unwrap();
+        assert_eq!(
+            query_project(&conn, &p.id).unwrap().unwrap().description.as_deref(),
+            Some("new desc")
+        );
+
+        assert_eq!(query_projects(&conn).unwrap().len(), 1);
+
+        delete_project(&conn, &p.id).unwrap();
+        assert!(query_project(&conn, &p.id).unwrap().is_none());
+        assert_eq!(query_projects(&conn).unwrap().len(), 0);
+    }
+
+    #[test]
+    fn deleting_project_cascades_to_todos_and_issues() {
+        let conn = test_conn();
+        let p = seed_project(&conn);
+        let t = Todo::new(p.id.clone(), "t".into(), None, None, None);
+        insert_todo(&conn, &t).unwrap();
+        let i = Issue::new(p.id.clone(), "i".into(), None, None, None);
+        insert_issue(&conn, &i).unwrap();
+
+        delete_project(&conn, &p.id).unwrap();
+
+        assert!(query_todo(&conn, &t.id).unwrap().is_none());
+        assert!(query_issue(&conn, &i.id).unwrap().is_none());
+    }
+
+    /* ----------------------------- todos ---------------------------- */
+
+    #[test]
+    fn todo_insert_query_update_delete() {
+        let conn = test_conn();
+        let p = seed_project(&conn);
+        let t = Todo::new(p.id.clone(), "Write tests".into(), None, None, None);
+        insert_todo(&conn, &t).unwrap();
+
+        let fetched = query_todo(&conn, &t.id).unwrap().unwrap();
+        assert_eq!(fetched.title, "Write tests");
+        assert_eq!(fetched.status, "Open");
+
+        update_todo(
+            &conn,
+            &t.id,
+            Some("Updated title"),
+            None,
+            Some("Done"),
+            Some("High"),
+            Some("AI"),
+        )
+        .unwrap();
+        let after = query_todo(&conn, &t.id).unwrap().unwrap();
+        assert_eq!(after.title, "Updated title");
+        assert_eq!(after.status, "Done");
+        assert_eq!(after.priority, "High");
+        assert_eq!(after.assignee, "AI");
+
+        delete_todo(&conn, &t.id).unwrap();
+        assert!(query_todo(&conn, &t.id).unwrap().is_none());
+    }
+
+    #[test]
+    fn query_todos_filters() {
+        let conn = test_conn();
+        let p1 = seed_project(&conn);
+        let p2 = seed_project(&conn);
+
+        insert_todo(
+            &conn,
+            &Todo::new(p1.id.clone(), "a".into(), None, Some("High".into()), Some(Actor::AI)),
+        )
+        .unwrap();
+        insert_todo(
+            &conn,
+            &Todo::new(p1.id.clone(), "b".into(), None, Some("Low".into()), Some(Actor::User)),
+        )
+        .unwrap();
+        insert_todo(
+            &conn,
+            &Todo::new(p2.id.clone(), "c".into(), None, None, None),
+        )
+        .unwrap();
+
+        assert_eq!(query_todos(&conn, None, None, None, None).unwrap().len(), 3);
+        assert_eq!(
+            query_todos(&conn, Some(&p1.id), None, None, None).unwrap().len(),
+            2
+        );
+        assert_eq!(
+            query_todos(&conn, None, None, Some("High"), None).unwrap().len(),
+            1
+        );
+        assert_eq!(
+            query_todos(&conn, None, None, None, Some("AI")).unwrap().len(),
+            1
+        );
+        assert_eq!(
+            query_todos(&conn, Some(&p1.id), Some("Open"), Some("Low"), Some("User"))
+                .unwrap()
+                .len(),
+            1
+        );
+        // No matches.
+        assert_eq!(
+            query_todos(&conn, None, Some("Done"), None, None).unwrap().len(),
+            0
+        );
+    }
+
+    /* ----------------------------- issues --------------------------- */
+
+    #[test]
+    fn issue_insert_query_update_delete() {
+        let conn = test_conn();
+        let p = seed_project(&conn);
+        let i = Issue::new(p.id.clone(), "Bug".into(), Some("boom".into()), None, None);
+        insert_issue(&conn, &i).unwrap();
+
+        let fetched = query_issue(&conn, &i.id).unwrap().unwrap();
+        assert_eq!(fetched.title, "Bug");
+        assert_eq!(fetched.description.as_deref(), Some("boom"));
+
+        update_issue(&conn, &i.id, None, None, Some("Done"), None, None).unwrap();
+        assert_eq!(query_issue(&conn, &i.id).unwrap().unwrap().status, "Done");
+
+        delete_issue(&conn, &i.id).unwrap();
+        assert!(query_issue(&conn, &i.id).unwrap().is_none());
+    }
+
+    #[test]
+    fn query_issues_filters_by_project() {
+        let conn = test_conn();
+        let p1 = seed_project(&conn);
+        let p2 = seed_project(&conn);
+        insert_issue(&conn, &Issue::new(p1.id.clone(), "x".into(), None, None, None)).unwrap();
+        insert_issue(&conn, &Issue::new(p2.id.clone(), "y".into(), None, None, None)).unwrap();
+
+        assert_eq!(query_issues(&conn, None, None, None, None).unwrap().len(), 2);
+        assert_eq!(
+            query_issues(&conn, Some(&p2.id), None, None, None).unwrap().len(),
+            1
+        );
+    }
+
+    /* --------------------------- activity --------------------------- */
+
+    #[test]
+    fn activity_insert_and_query_filters() {
+        let conn = test_conn();
+        let log = ActivityLog::new(
+            "Todo".into(),
+            "item-1".into(),
+            "Created".into(),
+            Actor::User,
+            None,
+            None,
+        );
+        insert_activity(&conn, &log).unwrap();
+        let log2 = ActivityLog::new(
+            "Issue".into(),
+            "item-2".into(),
+            "Created".into(),
+            Actor::AI,
+            None,
+            None,
+        );
+        insert_activity(&conn, &log2).unwrap();
+
+        assert_eq!(query_activity(&conn, None, None).unwrap().len(), 2);
+        assert_eq!(
+            query_activity(&conn, Some("item-1"), None).unwrap().len(),
+            1
+        );
+        assert_eq!(
+            query_activity(&conn, None, Some("Issue")).unwrap().len(),
+            1
+        );
+        assert_eq!(
+            query_activity(&conn, Some("item-1"), Some("Issue")).unwrap().len(),
+            0
+        );
+    }
+
+    #[test]
+    fn activity_for_project_scopes_to_items() {
+        let conn = test_conn();
+        let p1 = seed_project(&conn);
+        let p2 = seed_project(&conn);
+
+        let t = Todo::new(p1.id.clone(), "t".into(), None, None, None);
+        insert_todo(&conn, &t).unwrap();
+        let i = Issue::new(p2.id.clone(), "i".into(), None, None, None);
+        insert_issue(&conn, &i).unwrap();
+
+        insert_activity(
+            &conn,
+            &ActivityLog::new("Todo".into(), t.id.clone(), "Created".into(), Actor::User, None, None),
+        )
+        .unwrap();
+        insert_activity(
+            &conn,
+            &ActivityLog::new("Issue".into(), i.id.clone(), "Created".into(), Actor::User, None, None),
+        )
+        .unwrap();
+        // Unrelated activity not tied to any item in either project.
+        insert_activity(
+            &conn,
+            &ActivityLog::new("Todo".into(), "orphan".into(), "Created".into(), Actor::User, None, None),
+        )
+        .unwrap();
+
+        assert_eq!(query_activity_for_project(&conn, &p1.id).unwrap().len(), 1);
+        assert_eq!(query_activity_for_project(&conn, &p2.id).unwrap().len(), 1);
+    }
+
+    /* ----------------------------- search --------------------------- */
+
+    #[test]
+    fn search_matches_title_and_description_case_insensitive() {
+        let conn = test_conn();
+        let p = seed_project(&conn);
+        insert_todo(
+            &conn,
+            &Todo::new(p.id.clone(), "Fix Login Bug".into(), None, None, None),
+        )
+        .unwrap();
+        insert_todo(
+            &conn,
+            &Todo::new(p.id.clone(), "Other".into(), Some("has login text".into()), None, None),
+        )
+        .unwrap();
+        insert_issue(
+            &conn,
+            &Issue::new(p.id.clone(), "Unrelated".into(), None, None, None),
+        )
+        .unwrap();
+        insert_issue(
+            &conn,
+            &Issue::new(p.id.clone(), "LOGIN crash".into(), None, None, None),
+        )
+        .unwrap();
+
+        let (todos, issues) = search_items(&conn, "login", None).unwrap();
+        assert_eq!(todos.len(), 2); // title match + description match
+        assert_eq!(issues.len(), 1); // case-insensitive title match
+
+        let (none_t, none_i) = search_items(&conn, "zzz-no-match", None).unwrap();
+        assert!(none_t.is_empty());
+        assert!(none_i.is_empty());
+    }
+
+    #[test]
+    fn search_respects_project_scope() {
+        let conn = test_conn();
+        let p1 = seed_project(&conn);
+        let p2 = seed_project(&conn);
+        insert_todo(&conn, &Todo::new(p1.id.clone(), "login p1".into(), None, None, None)).unwrap();
+        insert_todo(&conn, &Todo::new(p2.id.clone(), "login p2".into(), None, None, None)).unwrap();
+
+        let (todos, _) = search_items(&conn, "login", Some(&p1.id)).unwrap();
+        assert_eq!(todos.len(), 1);
+        assert_eq!(todos[0].project_id, p1.id);
+    }
+}

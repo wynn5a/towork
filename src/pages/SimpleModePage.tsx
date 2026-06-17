@@ -4,8 +4,12 @@ import { useStore } from "../lib/store";
 import { completeTodo, createTodo } from "../lib/tauri";
 import { PRIORITY_META, PRIORITY_RANK } from "../lib/derive";
 import { useDoubleShift } from "../lib/useDoubleShift";
+import { useUI } from "../lib/ui";
 import { Avatar } from "../components/ui";
 import { Icon } from "../lib/icons";
+
+/** Past this length the inline add hands off to the full new-todo dialog. */
+const TITLE_HANDOFF_LIMIT = 50;
 
 /**
  * Simple Mode — a distraction-free flat list of open todos across all projects,
@@ -13,6 +17,7 @@ import { Icon } from "../lib/icons";
  */
 export function SimpleModePage() {
   const { items, projects, reload, projectById } = useStore();
+  const ui = useUI();
   const navigate = useNavigate();
   const [text, setText] = useState("");
   const [focus, setFocus] = useState(false);
@@ -33,9 +38,8 @@ export function SimpleModePage() {
     if (sel >= todos.length) setSel(Math.max(0, todos.length - 1));
   }, [todos.length, sel]);
 
-  async function add() {
-    const raw = text.trim();
-    if (!raw) return;
+  /** Resolve the destination project + clean title, honoring `#project` routing. */
+  function resolve(raw: string) {
     let title = raw;
     let target = projects[0];
     const hash = raw.match(/#(\S+)/);
@@ -46,10 +50,26 @@ export function SimpleModePage() {
         title = raw.replace(/#\S+/, "").trim();
       }
     }
+    return { title, target };
+  }
+
+  async function add() {
+    const raw = text.trim();
+    if (!raw) return;
+    const { title, target } = resolve(raw);
     if (!target || !title) return;
     await createTodo(target.id, title);
     setText("");
     await reload();
+  }
+
+  /** Long text deserves the full dialog. The typed words go into the
+   *  description; the title is left blank for the user to fill (required). */
+  function handoffToDialog(raw: string) {
+    const { title, target } = resolve(raw);
+    if (!target) return;
+    ui.openItemModal({ kind: "todo", projectId: target.id, draft: { description: title || raw } });
+    setText("");
   }
 
   async function complete(id: string) {
@@ -80,6 +100,11 @@ export function SimpleModePage() {
           <Icon name="target" size={13} />
           Simple mode
         </span>
+        {todos.length > 0 && (
+          <span className="simple-count">
+            {todos.length} open · sorted by priority
+          </span>
+        )}
         <div className="spacer" />
         <button className="btn-chip" onClick={exit}>
           Exit (Esc)
@@ -92,7 +117,14 @@ export function SimpleModePage() {
           ref={inputRef}
           value={text}
           placeholder="Add a todo…  use #project to route it"
-          onChange={(e) => setText(e.target.value)}
+          onChange={(e) => {
+            const v = e.target.value;
+            if (v.length > TITLE_HANDOFF_LIMIT) {
+              handoffToDialog(v);
+              return;
+            }
+            setText(v);
+          }}
           onFocus={() => setFocus(true)}
           onBlur={() => setFocus(false)}
           onKeyDown={(e) => {
@@ -117,10 +149,13 @@ export function SimpleModePage() {
                 key={t.id}
                 className={`simple-row${i === sel ? " sel" : ""}`}
                 onMouseEnter={() => setSel(i)}
-                onClick={() => complete(t.id)}
+                onClick={() =>
+                  ui.openItemModal({ kind: "todo", projectId: t.project_id, itemId: t.id })
+                }
               >
                 <button
                   className="item-check"
+                  title="Mark done"
                   onClick={(e) => {
                     e.stopPropagation();
                     complete(t.id);
