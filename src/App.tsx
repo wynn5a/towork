@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { Sidebar } from "./components/Sidebar";
 import { useUI } from "./lib/ui";
-import { useDoubleShift } from "./lib/useDoubleShift";
+import { useDoubleControl } from "./lib/useDoubleControl";
 
 /** Main application shell: sidebar + routed content. The window uses the
  *  native OS title bar (no custom chrome). */
@@ -11,7 +11,7 @@ export function App() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  useDoubleShift(() => navigate("/simple"));
+  useDoubleControl(() => navigate("/simple"));
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {

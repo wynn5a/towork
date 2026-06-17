@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useStore } from "../lib/store";
 import { completeTodo, createTodo } from "../lib/tauri";
 import { PRIORITY_META, PRIORITY_RANK } from "../lib/derive";
-import { useDoubleShift } from "../lib/useDoubleShift";
+import { useDoubleControl } from "../lib/useDoubleControl";
 import { useUI } from "../lib/ui";
 import { Avatar } from "../components/ui";
 import { Icon } from "../lib/icons";
@@ -14,7 +14,7 @@ const TITLE_HANDOFF_LIMIT = 50;
 
 /**
  * Simple Mode — a distraction-free flat list of open todos across all projects,
- * sorted High → Low. Keyboard: ↑/↓ navigate, Enter completes, Esc / double-Shift exits.
+ * sorted High → Low. Keyboard: ↑/↓ navigate, Enter completes, Esc / double-Control exits.
  */
 export function SimpleModePage() {
   const { items, projects, reload, projectById } = useStore();
@@ -26,7 +26,7 @@ export function SimpleModePage() {
   const inputRef = useRef<HTMLInputElement>(null);
 
   const exit = () => navigate("/");
-  useDoubleShift(exit);
+  useDoubleControl(exit);
 
   const todos = items
     .filter((i) => i.kind === "todo" && i.status !== "Done")
@@ -195,7 +195,7 @@ export function SimpleModePage() {
           <b>Esc</b> Exit
         </span>
         <span>
-          <b>⇧⇧</b> Toggle mode
+          <b>⌃⌃</b> Toggle mode
         </span>
       </div>
     </div>
