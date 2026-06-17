@@ -1,11 +1,11 @@
 import { useRef, useState } from "react";
 import { useStore } from "../lib/store";
 import { useUI } from "../lib/ui";
-import { createTodo } from "../lib/tauri";
+import { createIssue, createTodo } from "../lib/tauri";
 import { projectHue } from "../lib/derive";
 import { Icon } from "../lib/icons";
 import { Avatar } from "./ui";
-import type { Assignee } from "../lib/types";
+import type { Assignee, ItemKind } from "../lib/types";
 import { Menu, anchorMenu, type MenuItem, type MenuPos } from "./Menu";
 
 const ASSIGNEES: Assignee[] = ["AI", "User"];
@@ -14,6 +14,20 @@ const assigneeLabel = (a: Assignee) => (a === "AI" ? "Claude" : "You");
 /** Past this length the inline bar hands off to the full new-todo dialog,
  *  which has room for a long note plus a concise title. */
 const TITLE_HANDOFF_LIMIT = 50;
+
+/**
+ * Detect a leading `todo`/`issue` keyword and strip it, so typing
+ * `issue: login broken` (or `Issue login broken`) files an issue instead of a
+ * todo. The keyword must be followed by a separator (`:`, `-`, or whitespace)
+ * so a lone word like "issue" isn't swallowed into an empty title.
+ */
+function parseKind(raw: string): { kind: ItemKind; rest: string } {
+  // keyword + a separator (`:`/`-`) or whitespace — so "issue: x", "issue x"
+  // and "issue:x" all match, but "issues" / "issuex" don't.
+  const m = raw.match(/^\s*(issue|todo)(?:[:-]\s*|\s+)/i);
+  if (m) return { kind: m[1].toLowerCase() as ItemKind, rest: raw.slice(m[0].length) };
+  return { kind: "todo", rest: raw };
+}
 
 /**
  * The all-todos quick-add bar. Type a title and press Enter to create a todo in
@@ -32,30 +46,45 @@ export function QuickAdd() {
 
   const current = projects.find((p) => p.id === projId) ?? projects[0];
 
-  /** Resolve the destination project + clean title, honoring `#project` routing. */
+  /** Resolve kind + destination project + clean title, honoring the
+   *  `issue`/`todo` prefix and `#project` routing. */
   function resolve(raw: string) {
-    let title = raw;
+    const { kind, rest } = parseKind(raw);
+    let title = rest;
     let target = current;
-    const hash = raw.match(/#(\S+)/);
+    const hash = rest.match(/#(\S+)/);
     if (hash) {
       const match = projects.find((p) => p.name.toLowerCase() === hash[1].toLowerCase());
       if (match) {
         target = match;
-        title = raw.replace(/#\S+/, "").trim();
+        title = rest.replace(/#\S+/, "").trim();
       }
     }
-    return { title, target };
+    return { kind, title, target };
+  }
+
+  /** The kind the bar will create right now, reflected live by the leading icon. */
+  const kind = parseKind(text).kind;
+
+  /** Flip between todo/issue by rewriting the prefix — keeps the typed text as
+   *  the single source of truth so the icon and Enter agree. */
+  function toggleKind() {
+    const { kind, rest } = parseKind(text);
+    setText(kind === "todo" ? `issue ${rest}` : rest);
+    inputRef.current?.focus();
   }
 
   async function add() {
     const raw = text.trim();
     if (!raw || !current) return;
-    const { title, target } = resolve(raw);
+    const { kind, title, target } = resolve(raw);
     if (!title || !target) return;
-    await createTodo(target.id, title, undefined, undefined, assignee);
+    const create = kind === "issue" ? createIssue : createTodo;
+    await create(target.id, title, undefined, undefined, assignee);
     setText("");
     await reload();
-    toast("Todo added", `${target.name} · ${title} · ${assigneeLabel(assignee)}`, "green");
+    const label = kind === "issue" ? "Issue added" : "Todo added";
+    toast(label, `${target.name} · ${title} · ${assigneeLabel(assignee)}`, "green");
     inputRef.current?.focus();
   }
 
@@ -63,10 +92,10 @@ export function QuickAdd() {
    *  description (they read more like a note than a title); the title is left
    *  blank for the user to fill — it stays required to save. */
   function handoffToDialog(raw: string) {
-    const { title, target } = resolve(raw);
+    const { kind, title, target } = resolve(raw);
     if (!target) return;
     ui.openItemModal({
-      kind: "todo",
+      kind,
       projectId: target.id,
       draft: { description: title || raw, assignee },
     });
@@ -109,10 +138,21 @@ export function QuickAdd() {
 
   return (
     <div className={`quick-add${focus ? " focus" : ""}`}>
-      <span className="qa-ring" />
+      <button
+        type="button"
+        className={`qa-kind ${kind}`}
+        title={
+          kind === "issue"
+            ? "Filing an issue — click for a todo (or type “todo ”)"
+            : "Adding a todo — click for an issue (or type “issue ”)"
+        }
+        onClick={toggleKind}
+      >
+        <Icon name={kind} size={16} />
+      </button>
       <input
         ref={inputRef}
-        placeholder="Add a todo… press Enter to save"
+        placeholder="Add a todo… type “issue …” to file an issue"
         autoComplete="off"
         value={text}
         onChange={(e) => {

@@ -6,6 +6,8 @@ import { getMcpAddress } from "../lib/tauri";
 import { countItems, projectHue } from "../lib/derive";
 import { Icon } from "../lib/icons";
 import { Count, Kbd } from "./ui";
+// The app icon (web-usable sibling of icon.icns, generated together by `tauri icon`).
+import appIcon from "../../src-tauri/icons/128x128.png";
 
 export function Sidebar() {
   const { projects, itemsForProject, toast } = useStore();
@@ -48,7 +50,7 @@ export function Sidebar() {
     <aside className="sidebar">
       <div className="side-head">
         <span className="ws-badge">
-          <Icon name="project" size={14} stroke="#fff" />
+          <img src={appIcon} alt="Towork" />
         </span>
         <span className="ws-name">
           Towork<span className="sub">local · MCP</span>
