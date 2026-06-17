@@ -3,7 +3,7 @@ import { useParams } from "react-router-dom";
 import { useStore } from "../lib/store";
 import { useUI } from "../lib/ui";
 import { useItemActions } from "../lib/actions";
-import { ItemList } from "../components/items";
+import { ItemList, ListSkeleton } from "../components/items";
 import { ActivityTimeline } from "../components/ActivityTimeline";
 import { Count, EmptyState } from "../components/ui";
 import { Icon } from "../lib/icons";
@@ -21,7 +21,20 @@ export function ProjectPage() {
   const [menu, setMenu] = useState<MenuPos | null>(null);
 
   const project = projectById(id);
-  if (loading && !project) return <div className="view-pad page-sub">Loading…</div>;
+  if (loading && !project) {
+    return (
+      <div className="view-pad">
+        <div className="page-head">
+          <div className="ph-text">
+            <h1 className="page-title" style={{ opacity: 0.5 }}>
+              Loading…
+            </h1>
+          </div>
+        </div>
+        <ListSkeleton rows={6} />
+      </div>
+    );
+  }
   if (!project) {
     return (
       <div className="view-pad">

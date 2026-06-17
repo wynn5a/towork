@@ -155,40 +155,47 @@ button { font-family: inherit; }
   border: 1px solid color-mix(in srgb, var(--accent) 45%, rgba(0,0,0,0.28));
   background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 96%, #fff), var(--accent));
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.14), 0 1px 2px rgba(0,0,0,0.35);
-  transition: filter var(--dur-2) var(--ease);
+  transition: filter var(--dur-2) var(--ease), transform var(--dur-1) var(--ease);
 }
 .btn-primary:hover { filter: brightness(1.08); }
+.btn-primary:active:not(:disabled):not(.disabled) { transform: translateY(0.5px) scale(0.985); }
 .btn-primary:disabled, .btn-primary.disabled { opacity: .4; cursor: not-allowed; filter: none; }
 .btn-secondary {
   display: inline-flex; align-items: center; gap: 7px; padding: 6px 13px; white-space: nowrap;
   border-radius: var(--radius); border: none; background: var(--bg-control); color: var(--on-control);
   font-size: 12.5px; font-weight: 500; cursor: pointer;
   box-shadow: inset 0 0 0 1px rgba(255,255,255,0.055), inset 0 1px 0 rgba(255,255,255,0.05), 0 1px 2px rgba(0,0,0,0.28);
-  transition: background-color .15s var(--ease);
+  transition: background-color .15s var(--ease), transform var(--dur-1) var(--ease);
 }
 .btn-secondary:hover { background: var(--bg-control-hover); color: var(--text-1); }
+.btn-secondary:active { transform: translateY(0.5px) scale(0.985); }
 .btn-chip {
   display: inline-flex; align-items: center; gap: 6px; padding: 5.5px 10px; white-space: nowrap;
   border-radius: var(--radius-sm); border: 1px solid var(--border); background: transparent;
   color: var(--text-2); font-size: 12.5px; cursor: pointer;
-  transition: background-color var(--dur-2) var(--ease), border-color var(--dur-2) var(--ease), color var(--dur-2) var(--ease);
+  transition: background-color var(--dur-2) var(--ease), border-color var(--dur-2) var(--ease), color var(--dur-2) var(--ease), transform var(--dur-1) var(--ease);
 }
 .btn-chip:hover { background: var(--bg-hover); color: var(--text-1); border-color: var(--border-strong); }
+.btn-chip:active { transform: translateY(0.5px) scale(0.985); }
 .btn-chip.danger { color: var(--red); border-color: color-mix(in srgb, var(--red) 30%, transparent); }
 .btn-chip.danger:hover { background: color-mix(in srgb, var(--red) 10%, transparent); border-color: color-mix(in srgb, var(--red) 45%, transparent); }
 .btn-ghost {
   display: inline-flex; align-items: center; gap: 7px; padding: 5.5px 11px; white-space: nowrap;
   border-radius: var(--radius-sm); border: 1px solid transparent; background: transparent;
   color: var(--text-2); font-size: 12.5px; cursor: pointer;
-  transition: background-color var(--dur-2) var(--ease), color var(--dur-2) var(--ease);
+  transition: background-color var(--dur-2) var(--ease), color var(--dur-2) var(--ease), transform var(--dur-1) var(--ease);
 }
 .btn-ghost:hover { background: var(--bg-hover); color: var(--text-1); }
+.btn-ghost:active { transform: translateY(0.5px) scale(0.985); }
+.btn-ghost.danger { color: var(--text-3); }
+.btn-ghost.danger:hover { background: color-mix(in srgb, var(--red) 10%, transparent); color: var(--red); }
 .icon-btn {
   display: grid; place-items: center; width: 28px; height: 28px; border-radius: var(--radius-sm);
   border: none; background: transparent; color: var(--text-3); cursor: pointer;
-  transition: background-color var(--dur-2) var(--ease), color var(--dur-2) var(--ease);
+  transition: background-color var(--dur-2) var(--ease), color var(--dur-2) var(--ease), transform var(--dur-1) var(--ease);
 }
 .icon-btn:hover { background: var(--bg-active); color: var(--text-1); }
+.icon-btn:active { transform: scale(0.9); }
 .kbd {
   font-family: var(--mono); font-size: 10.5px; padding: 1.5px 5px; border-radius: 4px;
   background: var(--bg-elevated); border: 1px solid var(--border); color: var(--text-2); line-height: 1;
@@ -205,9 +212,12 @@ button { font-family: inherit; }
   background: var(--bg-panel);
   padding: calc(16px * var(--d-scale)) 16px;
   cursor: pointer; display: flex; flex-direction: column; gap: 12px;
-  transition: border-color var(--dur-2) var(--ease), background-color var(--dur-2) var(--ease);
+  transition: border-color var(--dur-2) var(--ease), background-color var(--dur-2) var(--ease),
+    transform var(--dur-3) var(--ease-out), box-shadow var(--dur-3) var(--ease-out);
 }
-.proj-card:hover { border-color: var(--border-strong); background: var(--bg-hover); }
+.proj-card:hover { border-color: var(--border-strong); background: var(--bg-hover);
+  transform: translateY(-2px); box-shadow: var(--shadow-pop); }
+.proj-card:active { transform: translateY(-1px) scale(0.995); }
 .proj-card-head { display: flex; align-items: center; gap: 10px; }
 .proj-glyph {
   width: 30px; height: 30px; border-radius: 8px; flex-shrink: 0; display: grid; place-items: center;
@@ -278,6 +288,28 @@ button { font-family: inherit; }
 .tab .count { margin-left: 1px; }
 
 /* ----------------------------------------------------------------
+   Segmented control — compact list controls (e.g. home "Group by")
+---------------------------------------------------------------- */
+.seg {
+  display: inline-flex; gap: 2px; padding: 2px; border-radius: var(--radius-sm);
+  background: var(--bg-input); border: 1px solid var(--border);
+}
+.seg-btn {
+  display: inline-flex; align-items: center; gap: 6px; padding: 4.5px 10px;
+  border-radius: 5px; border: none; background: transparent; cursor: pointer;
+  color: var(--text-3); font-family: inherit; font-size: 12px; white-space: nowrap;
+  transition: background-color var(--dur-2) var(--ease), color var(--dur-2) var(--ease), transform var(--dur-1) var(--ease);
+}
+.seg-btn svg { opacity: 0.85; }
+.seg-btn:hover { color: var(--text-1); }
+.seg-btn:active { transform: scale(0.96); }
+.seg-btn.sel {
+  color: var(--text-1); font-weight: 500; background: var(--accent-soft);
+  box-shadow: inset 0 0 0 1px var(--accent-line);
+}
+.seg-btn.sel svg { opacity: 1; color: var(--accent); }
+
+/* ----------------------------------------------------------------
    Item cards / rows
 ---------------------------------------------------------------- */
 .item-list {
@@ -324,8 +356,9 @@ button { font-family: inherit; }
 .item-check {
   width: 18px; height: 18px; padding: 0; border-radius: 99px; flex-shrink: 0;
   border: 1.5px solid var(--text-4); background: transparent; cursor: pointer; display: grid; place-items: center;
-  color: transparent; transition: border-color var(--dur-2) var(--ease), background-color var(--dur-2) var(--ease), color var(--dur-2) var(--ease);
+  color: transparent; transition: border-color var(--dur-2) var(--ease), background-color var(--dur-2) var(--ease), color var(--dur-2) var(--ease), transform var(--dur-2) var(--ease-spring);
 }
+.item-check:active { transform: scale(0.85); }
 .item-check svg { display: block; }
 .item-check:hover { border-color: var(--green); }
 .item-row.done .item-check { background: var(--green); border-color: var(--green); color: #08130b; }
@@ -336,6 +369,26 @@ button { font-family: inherit; }
 .item-title { font-size: 13.5px; font-weight: 500; color: var(--text-1); letter-spacing: -0.008em;
   flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .row-right { margin-left: auto; display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+
+/* ----------------------------------------------------------------
+   Skeleton loading — shimmering placeholders for lists / card grids
+---------------------------------------------------------------- */
+.skeleton-list { display: flex; flex-direction: column; animation: row-in-left var(--dur-4) var(--ease-out); }
+.skel-row {
+  display: flex; align-items: center; gap: 11px;
+  padding: calc(9px * var(--d-scale)) 8px; border-bottom: 1px solid var(--border-soft);
+}
+.skel { position: relative; overflow: hidden; border-radius: 6px; background: var(--bg-elevated); }
+.skel::after {
+  content: ""; position: absolute; inset: 0; transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.07), transparent);
+  animation: skel-shimmer 1.4s var(--ease-in-out) infinite;
+}
+@keyframes skel-shimmer { to { transform: translateX(100%); } }
+.skel-dot { width: 18px; height: 18px; border-radius: 99px; flex-shrink: 0; }
+.skel-bar { height: 10px; border-radius: 6px; flex-shrink: 0; }
+.skel-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 14px; }
+.skel-card { height: 134px; border-radius: var(--radius); }
 
 /* pills */
 .pill {
@@ -552,7 +605,7 @@ textarea.input { resize: vertical; min-height: 64px; line-height: 1.55; }
 }
 .toggle::after {
   content: ""; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 99px;
-  background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,0.4); transition: transform var(--dur-2) var(--ease);
+  background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,0.4); transition: transform var(--dur-3) var(--ease-spring);
 }
 .toggle.on { background: var(--accent); }
 .toggle.on::after { transform: translateX(12px); }
@@ -602,6 +655,17 @@ textarea.input { resize: vertical; min-height: 64px; line-height: 1.55; }
 .mi svg { width: 15px; height: 15px; }
 .msep { height: 1px; background: var(--border-soft); margin: 5px 6px; }
 
+/* tooltip */
+.tip {
+  position: fixed; z-index: 200; pointer-events: none;
+  max-width: 240px; padding: 5px 8px; border-radius: 6px;
+  background: var(--bg-tooltip); color: var(--text-1);
+  font-size: 11.5px; line-height: 1.35; font-weight: 500; letter-spacing: -0.004em;
+  border: 1px solid var(--border-strong); box-shadow: var(--shadow-pop);
+  animation: tip-in var(--dur-2) var(--ease-out);
+}
+@keyframes tip-in { from { opacity: 0; transform: translateY(2px); } to { opacity: 1; transform: none; } }
+
 /* toast */
 .toast-wrap { position: fixed; right: 18px; bottom: 18px; z-index: 140; display: flex; flex-direction: column; gap: 10px; }
 .toast {
@@ -621,6 +685,82 @@ textarea.input { resize: vertical; min-height: 64px; line-height: 1.55; }
 .hidden { display: none !important; }
 .fade-in { animation: view-in var(--dur-3) var(--ease-out); }
 @keyframes view-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+
+/* ----------------------------------------------------------------
+   Motion enhancements — entrance + stagger + micro-interactions.
+   Built on the --dur-* / --ease-* token scale; every rule below is
+   automatically neutralised by the prefers-reduced-motion guard that
+   follows. Entrances use `backwards` fill so a staggered item stays at
+   its `from` frame during its delay (no flash) and reverts to base
+   styles once finished (so e.g. .item-row.done opacity still wins).
+---------------------------------------------------------------- */
+
+/* Page/view entrance — replays on the per-route remount keyed in App.tsx. */
+.view-pad { animation: view-in var(--dur-4) var(--ease-out); }
+
+/* Item rows fade-rise in a quick stagger; opacity joins the transition so
+   toggling an item Done cross-fades to its dimmed state. */
+.item-row { transition: background-color var(--dur-2) var(--ease), opacity var(--dur-3) var(--ease); }
+.item-list .item-row { animation: row-in var(--dur-3) var(--ease-out) backwards; }
+.item-list .item-row:nth-child(1) { animation-delay: 0ms; }
+.item-list .item-row:nth-child(2) { animation-delay: 24ms; }
+.item-list .item-row:nth-child(3) { animation-delay: 48ms; }
+.item-list .item-row:nth-child(4) { animation-delay: 72ms; }
+.item-list .item-row:nth-child(5) { animation-delay: 96ms; }
+.item-list .item-row:nth-child(6) { animation-delay: 120ms; }
+.item-list .item-row:nth-child(7) { animation-delay: 144ms; }
+.item-list .item-row:nth-child(8) { animation-delay: 168ms; }
+.item-list .item-row:nth-child(n+9) { animation-delay: 190ms; }
+@keyframes row-in { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: none; } }
+@keyframes row-in-left { from { opacity: 0; transform: translateX(-16px); } to { opacity: 1; transform: none; } }
+/* Home page reveals its rows left-to-right rather than bottom-up (keeps the
+   top-to-bottom stagger from the .item-list nth-child delays above). */
+.home-list .item-row { animation-name: row-in-left; }
+
+/* The checkmark springs in when a row flips to Done. */
+.item-row.done .item-check svg { animation: check-pop var(--dur-3) var(--ease-spring); }
+@keyframes check-pop { 0% { transform: scale(0); } 60% { transform: scale(1.18); } 100% { transform: scale(1); } }
+
+/* Project cards rise + stagger into the grid. */
+.proj-grid .proj-card { animation: card-in var(--dur-4) var(--ease-out) backwards; }
+.proj-grid .proj-card:nth-child(1) { animation-delay: 0ms; }
+.proj-grid .proj-card:nth-child(2) { animation-delay: 40ms; }
+.proj-grid .proj-card:nth-child(3) { animation-delay: 80ms; }
+.proj-grid .proj-card:nth-child(4) { animation-delay: 120ms; }
+.proj-grid .proj-card:nth-child(5) { animation-delay: 160ms; }
+.proj-grid .proj-card:nth-child(6) { animation-delay: 200ms; }
+.proj-grid .proj-card:nth-child(n+7) { animation-delay: 230ms; }
+@keyframes card-in { from { opacity: 0; transform: translateY(8px) scale(0.99); } to { opacity: 1; transform: none; } }
+
+/* Sidebar nav + project rows drift in once on first paint (sidebar persists
+   across routes, so this plays at app load, not on every navigation). */
+.side-nav .nav-item, .proj-list .proj-row {
+  animation: side-in var(--dur-3) var(--ease-out) backwards;
+  transition: background-color var(--dur-2) var(--ease), color var(--dur-2) var(--ease), transform var(--dur-1) var(--ease);
+}
+.side-nav .nav-item:nth-child(1) { animation-delay: 30ms; }
+.side-nav .nav-item:nth-child(2) { animation-delay: 60ms; }
+.side-nav .nav-item:nth-child(3) { animation-delay: 90ms; }
+.side-nav .nav-item:nth-child(n+4) { animation-delay: 120ms; }
+.proj-list .proj-row:nth-child(1) { animation-delay: 90ms; }
+.proj-list .proj-row:nth-child(2) { animation-delay: 120ms; }
+.proj-list .proj-row:nth-child(3) { animation-delay: 150ms; }
+.proj-list .proj-row:nth-child(n+4) { animation-delay: 175ms; }
+.nav-item:active, .proj-row:active { transform: scale(0.985); }
+@keyframes side-in { from { opacity: 0; transform: translateX(-6px); } to { opacity: 1; transform: none; } }
+
+/* Empty states pop gently rather than appearing instantly. */
+.empty { animation: pop-in var(--dur-4) var(--ease-out); }
+@keyframes pop-in { from { opacity: 0; transform: translateY(6px) scale(0.985); } to { opacity: 1; transform: none; } }
+
+/* Remaining tactile controls get a press response. */
+.qa-kind, .pager-btn, .prop-pill, .opt-seg button {
+  transition: background-color var(--dur-2) var(--ease), border-color var(--dur-2) var(--ease),
+    color var(--dur-2) var(--ease), transform var(--dur-1) var(--ease);
+}
+.qa-kind:active, .opt-seg button:active { transform: scale(0.94); }
+.pager-btn:active:not(:disabled) { transform: scale(0.9); }
+.prop-pill:active { transform: translateY(0.5px) scale(0.97); }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }

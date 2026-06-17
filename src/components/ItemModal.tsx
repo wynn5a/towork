@@ -12,7 +12,9 @@ import {
 import { PRIORITY_META, STATUS_META, projectPrefix } from "../lib/derive";
 import { Icon } from "../lib/icons";
 import { Avatar, IconButton, Kbd, Toggle } from "./ui";
+import { Tooltip } from "./Tooltip";
 import { Menu, anchorMenu, type MenuItem, type MenuPos } from "./Menu";
+import { ConfirmDialog } from "./ConfirmDialog";
 
 export interface ItemModalConfig {
   kind: ItemKind;
@@ -46,6 +48,7 @@ export function ItemModal({
   );
   const [createMore, setCreateMore] = useState(false);
   const [menu, setMenu] = useState<{ key: PropKey; pos: MenuPos } | null>(null);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   const titleRef = useRef<HTMLInputElement>(null);
   const descRef = useRef<HTMLTextAreaElement>(null);
@@ -106,6 +109,9 @@ export function ItemModal({
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
+        // While the delete confirmation is up, let it handle Escape (cancel)
+        // rather than closing the whole modal.
+        if (confirmingDelete) return;
         e.preventDefault();
         onClose();
       } else if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
@@ -163,8 +169,9 @@ export function ItemModal({
   };
 
   return (
-    <div className="overlay open" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="dialog issue-dialog" role="dialog" aria-modal="true">
+    <>
+      <div className="overlay open" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+        <div className="dialog issue-dialog" role="dialog" aria-modal="true">
         <div className="idlg-head">
           <span className="idlg-crumb">
             <span className="idlg-badge">
@@ -213,16 +220,24 @@ export function ItemModal({
             </button>
           ))}
           {existing && (
-            <button className="prop-pill danger" title="Delete" onClick={remove}>
-              <Icon name="trash" size={14} />
-            </button>
+            <Tooltip label="Delete">
+              <button
+                className="btn-ghost danger"
+                style={{ marginLeft: "auto" }}
+                onClick={() => setConfirmingDelete(true)}
+              >
+                <Icon name="trash" size={14} />
+              </button>
+            </Tooltip>
           )}
         </div>
 
         <div className="idlg-foot">
-          <button className="idlg-attach" title="Attach (coming soon)">
-            <Icon name="paperclip" size={15} />
-          </button>
+          <Tooltip label="Attach (coming soon)">
+            <button className="idlg-attach">
+              <Icon name="paperclip" size={15} />
+            </button>
+          </Tooltip>
           <div className="idlg-foot-right">
             {!existing && (
               <button className="create-more" onClick={() => setCreateMore((v) => !v)}>
@@ -241,6 +256,16 @@ export function ItemModal({
       {menu && (
         <Menu pos={menu.pos} items={menuItems(menu.key)} onClose={() => setMenu(null)} />
       )}
-    </div>
+      </div>
+      {existing && confirmingDelete && (
+        <ConfirmDialog
+          title={`Delete ${seqId(existing.id)}?`}
+          message={`“${existing.title}” will be permanently removed. This can’t be undone.`}
+          confirmLabel="Delete"
+          onConfirm={remove}
+          onClose={() => setConfirmingDelete(false)}
+        />
+      )}
+    </>
   );
 }

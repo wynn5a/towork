@@ -3,7 +3,7 @@ import { StoreProvider } from "./lib/store";
 import { UIProvider } from "./lib/ui";
 import { Toaster } from "./components/Toaster";
 import { App } from "./App";
-import { TodosPage } from "./pages/TodosPage";
+import { HomePage } from "./pages/HomePage";
 import { ProjectsPage } from "./pages/ProjectsPage";
 import { ProjectPage } from "./pages/ProjectPage";
 import { SearchPage } from "./pages/SearchPage";
@@ -16,7 +16,7 @@ export default function Router() {
         <UIProvider>
           <Routes>
             <Route element={<App />}>
-              <Route index element={<TodosPage />} />
+              <Route index element={<HomePage />} />
               <Route path="projects" element={<ProjectsPage />} />
               <Route path="project/:id" element={<ProjectPage />} />
               <Route path="search" element={<SearchPage />} />

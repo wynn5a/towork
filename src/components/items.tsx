@@ -1,9 +1,15 @@
 import { useState, type ReactNode } from "react";
-import type { Item } from "../lib/types";
+import type { Item, Project } from "../lib/types";
 import { useStore } from "../lib/store";
 import { PRIORITY_RANK } from "../lib/derive";
 import { Avatar, Count, PrioritySignal, EmptyState } from "./ui";
-import { Icon } from "../lib/icons";
+import { Tooltip } from "./Tooltip";
+import { Icon, type IconName } from "../lib/icons";
+
+/** How the unified list is sliced into labelled sections. `none` is a single
+ *  unlabelled section — used inside a tab that is already scoped (e.g. a Status
+ *  tab), so the section header doesn't just repeat the tab name. */
+export type GroupMode = "status" | "project" | "date" | "none";
 
 /** Open items: order High → Medium → Low. Equal priorities keep their incoming
  *  (creation) order since Array.prototype.sort is stable. */
@@ -14,11 +20,112 @@ const byPriority = (a: Item, b: Item) => PRIORITY_RANK[a.priority] - PRIORITY_RA
  *  lexicographically in chronological order). */
 const byCompleted = (a: Item, b: Item) => b.updated_at.localeCompare(a.updated_at);
 
-/** Page size for the Open and Done lists; pagination appears past this count. */
+/** Newest-created first — used inside date buckets. */
+const byCreatedDesc = (a: Item, b: Item) => b.created_at.localeCompare(a.created_at);
+
+/** Within a mixed group, surface open work first (by priority), then the done
+ *  items (most-recently-completed first) trailing beneath it. */
+function openThenDone(items: Item[]): Item[] {
+  const open = items.filter((i) => i.status !== "Done").sort(byPriority);
+  const done = items.filter((i) => i.status === "Done").sort(byCompleted);
+  return [...open, ...done];
+}
+
+/** Coarse, calendar-relative bucket for an ISO timestamp (local time). */
+function dateBucket(iso: string): { rank: number; label: string } {
+  const startOfDay = (t: number) => {
+    const x = new Date(t);
+    return new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+  };
+  const day = 86_400_000;
+  const today = startOfDay(Date.now());
+  const t = startOfDay(new Date(iso).getTime());
+  if (t >= today) return { rank: 0, label: "Today" };
+  if (t >= today - day) return { rank: 1, label: "Yesterday" };
+  if (t >= today - 7 * day) return { rank: 2, label: "Previous 7 days" };
+  if (t >= today - 30 * day) return { rank: 3, label: "Previous 30 days" };
+  return { rank: 4, label: "Older" };
+}
+
+interface Section {
+  key: string;
+  label: string;
+  items: Item[];
+}
+
+/** Slice items into the labelled sections for the chosen grouping. Empty
+ *  sections are dropped so the view never shows a header with nothing under it. */
+function buildSections(items: Item[], groupBy: GroupMode, projects: Project[]): Section[] {
+  if (groupBy === "none") {
+    return items.length ? [{ key: "all", label: "", items: openThenDone(items) }] : [];
+  }
+
+  if (groupBy === "project") {
+    const byProject = new Map<string, Item[]>();
+    for (const it of items) {
+      const arr = byProject.get(it.project_id) ?? [];
+      arr.push(it);
+      byProject.set(it.project_id, arr);
+    }
+    // Follow the sidebar's project order; skip projects with nothing here.
+    return projects
+      .filter((p) => byProject.has(p.id))
+      .map((p) => ({ key: p.id, label: p.name, items: openThenDone(byProject.get(p.id)!) }));
+  }
+
+  if (groupBy === "date") {
+    const byBucket = new Map<number, { label: string; items: Item[] }>();
+    for (const it of items) {
+      const b = dateBucket(it.created_at);
+      const slot = byBucket.get(b.rank) ?? { label: b.label, items: [] };
+      slot.items.push(it);
+      byBucket.set(b.rank, slot);
+    }
+    return [...byBucket.entries()]
+      .sort((a, b) => a[0] - b[0])
+      .map(([rank, slot]) => ({
+        key: `date-${rank}`,
+        label: slot.label,
+        items: slot.items.slice().sort(byCreatedDesc),
+      }));
+  }
+
+  // status (default) — the classic Open / Done split.
+  const open = items.filter((i) => i.status !== "Done").sort(byPriority);
+  const done = items.filter((i) => i.status === "Done").sort(byCompleted);
+  const sections: Section[] = [];
+  if (open.length) sections.push({ key: "open", label: "Open", items: open });
+  if (done.length) sections.push({ key: "done", label: "Done", items: done });
+  return sections;
+}
+
+/** Page size for each list section; pagination appears past this count. */
 const PAGE_SIZE = 10;
 
 export function SectionLabel({ children }: { children: ReactNode }) {
   return <div className="section-label">{children}</div>;
+}
+
+/** Shimmering placeholder rows shown while a list is loading. Varied title
+ *  widths keep it reading like real content rather than a bar chart. */
+export function ListSkeleton({ rows = 6 }: { rows?: number }) {
+  const titleWidths = [240, 320, 180, 280, 150, 300, 210, 260];
+  return (
+    <div className="skeleton-list" aria-hidden="true">
+      {Array.from({ length: rows }).map((_, i) => (
+        <div className="skel-row" key={i}>
+          <span className="skel skel-dot" />
+          <span className="skel skel-bar" style={{ width: 14 }} />
+          <span className="skel skel-bar" style={{ width: 44 }} />
+          <span
+            className="skel skel-bar"
+            style={{ width: titleWidths[i % titleWidths.length], maxWidth: "55%" }}
+          />
+          <span className="skel skel-dot" style={{ marginLeft: "auto", width: 20, height: 20 }} />
+        </div>
+      ))}
+    </div>
+  );
 }
 
 export function ItemRow({
@@ -37,16 +144,17 @@ export function ItemRow({
   const project = projectById(item.project_id);
   return (
     <div className={`item-row${done ? " done" : ""}`} onClick={() => onOpen(item)}>
-      <button
-        className="item-check"
-        title="Toggle done"
-        onClick={(e) => {
-          e.stopPropagation();
-          onToggle(item);
-        }}
-      >
-        <Icon name="check" size={11} stroke="#08130b" />
-      </button>
+      <Tooltip label={done ? "Mark as not done" : "Mark as done"}>
+        <button
+          className="item-check"
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggle(item);
+          }}
+        >
+          <Icon name="check" size={11} stroke="#08130b" />
+        </button>
+      </Tooltip>
       <PrioritySignal priority={item.priority} />
       <span className="item-id">{seqId(item.id)}</span>
       <span className="item-title">{item.title}</span>
@@ -73,20 +181,19 @@ function Pager({
 }) {
   return (
     <div className="pager">
-      <button className="pager-btn" disabled={page === 0} onClick={onPrev} title="Previous page">
-        <Icon name="chevron" size={14} style={{ transform: "rotate(180deg)" }} />
-      </button>
+      <Tooltip label="Previous page">
+        <button className="pager-btn" disabled={page === 0} onClick={onPrev}>
+          <Icon name="chevron" size={14} style={{ transform: "rotate(180deg)" }} />
+        </button>
+      </Tooltip>
       <span className="pager-info">
         {page + 1} / {pageCount}
       </span>
-      <button
-        className="pager-btn"
-        disabled={page >= pageCount - 1}
-        onClick={onNext}
-        title="Next page"
-      >
-        <Icon name="chevron" size={14} />
-      </button>
+      <Tooltip label="Next page">
+        <button className="pager-btn" disabled={page >= pageCount - 1} onClick={onNext}>
+          <Icon name="chevron" size={14} />
+        </button>
+      </Tooltip>
     </div>
   );
 }
@@ -116,9 +223,11 @@ function ListSection({
 
   return (
     <>
-      <SectionLabel>
-        {label} <Count>{items.length}</Count>
-      </SectionLabel>
+      {label && (
+        <SectionLabel>
+          {label} <Count>{items.length}</Count>
+        </SectionLabel>
+      )}
       <div className="item-list">
         {visible.map((it) => (
           <ItemRow
@@ -145,6 +254,7 @@ function ListSection({
 export function ItemList({
   items,
   showProject,
+  groupBy = "status",
   emptyIcon,
   emptyTitle,
   emptyDescription,
@@ -154,13 +264,16 @@ export function ItemList({
 }: {
   items: Item[];
   showProject?: boolean;
-  emptyIcon?: "todo" | "issue";
+  /** How to slice the list into sections (default: Open / Done). */
+  groupBy?: GroupMode;
+  emptyIcon?: IconName;
   emptyTitle?: string;
   emptyDescription?: string;
   emptyAction?: ReactNode;
   onToggle: (item: Item) => void;
   onOpen: (item: Item) => void;
 }) {
+  const { projects } = useStore();
   if (items.length === 0 && emptyTitle) {
     return (
       <EmptyState
@@ -171,24 +284,22 @@ export function ItemList({
       />
     );
   }
-  const open = items.filter((i) => i.status !== "Done").sort(byPriority);
-  const done = items.filter((i) => i.status === "Done").sort(byCompleted);
+  // Grouping by project already names the project in each header, so the
+  // per-row project tag would be redundant there.
+  const rowShowProject = groupBy === "project" ? false : showProject;
+  const sections = buildSections(items, groupBy, projects);
   return (
     <>
-      <ListSection
-        label="Open"
-        items={open}
-        showProject={showProject}
-        onToggle={onToggle}
-        onOpen={onOpen}
-      />
-      <ListSection
-        label="Done"
-        items={done}
-        showProject={showProject}
-        onToggle={onToggle}
-        onOpen={onOpen}
-      />
+      {sections.map((s) => (
+        <ListSection
+          key={s.key}
+          label={s.label}
+          items={s.items}
+          showProject={rowShowProject}
+          onToggle={onToggle}
+          onOpen={onOpen}
+        />
+      ))}
     </>
   );
 }

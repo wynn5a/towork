@@ -65,7 +65,7 @@ export function CommandPalette({ onClose }: { onClose: () => void }) {
           else navigate("/projects");
         },
       },
-      { group: "Go to", label: "All todos", icon: "todo", run: () => { onClose(); navigate("/"); } },
+      { group: "Go to", label: "Home", icon: "inbox", run: () => { onClose(); navigate("/"); } },
       { group: "Go to", label: "All projects", icon: "project", run: () => { onClose(); navigate("/projects"); } },
       { group: "Go to", label: "Search", icon: "search", run: () => { onClose(); navigate("/search"); } },
     ];

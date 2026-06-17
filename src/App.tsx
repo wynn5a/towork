@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { Sidebar } from "./components/Sidebar";
+import { useStore } from "./lib/store";
 import { useUI } from "./lib/ui";
 import { useDoubleControl } from "./lib/useDoubleControl";
 
@@ -8,6 +9,7 @@ import { useDoubleControl } from "./lib/useDoubleControl";
  *  native OS title bar (no custom chrome). */
 export function App() {
   const ui = useUI();
+  const { projects } = useStore();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -18,11 +20,26 @@ export function App() {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
         e.preventDefault();
         ui.toggleCommandPalette();
+        return;
+      }
+      // ⌘N / Ctrl+N — open the new-todo dialog, scoped to the project you're
+      // viewing (falling back to the first project). No-op while another
+      // overlay is open or before any project exists.
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "n") {
+        e.preventDefault();
+        if (ui.isAnyOverlayOpen()) return;
+        const onProject = location.pathname.match(/^\/project\/([^/]+)/);
+        const projectId =
+          onProject && projects.some((p) => p.id === onProject[1])
+            ? onProject[1]
+            : projects[0]?.id;
+        if (!projectId) return;
+        ui.openItemModal({ kind: "todo", projectId });
       }
     };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, [ui]);
+  }, [ui, projects, location.pathname]);
 
   return (
     <div className="shell">

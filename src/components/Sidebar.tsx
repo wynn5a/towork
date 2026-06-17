@@ -6,6 +6,7 @@ import { getMcpAddress } from "../lib/tauri";
 import { countItems, projectHue } from "../lib/derive";
 import { Icon } from "../lib/icons";
 import { Count, Kbd } from "./ui";
+import { Tooltip } from "./Tooltip";
 // The app icon (web-usable sibling of icon.icns, generated together by `tauri icon`).
 import appIcon from "../../src-tauri/icons/128x128.png";
 
@@ -35,7 +36,7 @@ export function Sidebar() {
 
   const projMatch = loc.pathname.match(/^\/project\/(.+)$/);
   const activeProjectId = projMatch?.[1];
-  const isTodos = loc.pathname === "/";
+  const isHome = loc.pathname === "/";
   const isProjects = loc.pathname === "/projects";
 
   // The pen button creates a todo: in the active project if viewing one, else
@@ -55,22 +56,19 @@ export function Sidebar() {
         <span className="ws-name">
           Towork<span className="sub">local · MCP</span>
         </span>
-        <button
-          className="icon-btn"
-          title="New todo"
-          style={{ marginLeft: "auto" }}
-          onClick={compose}
-        >
-          <Icon name="edit" size={15} />
-        </button>
+        <Tooltip label="New todo">
+          <button className="icon-btn" style={{ marginLeft: "auto" }} onClick={compose}>
+            <Icon name="edit" size={15} />
+          </button>
+        </Tooltip>
       </div>
 
       <div className="side-nav">
-        <div className={`nav-item${isTodos ? " active" : ""}`} onClick={() => navigate("/")}>
+        <div className={`nav-item${isHome ? " active" : ""}`} onClick={() => navigate("/")}>
           <span className="ni-ic">
-            <Icon name="todo" size={16} />
+            <Icon name="inbox" size={16} />
           </span>
-          <span className="ni-label">Todos</span>
+          <span className="ni-label">Home</span>
         </div>
         <div
           className={`nav-item${isProjects ? " active" : ""}`}
@@ -92,9 +90,11 @@ export function Sidebar() {
 
       <div className="side-grouplabel">
         Projects
-        <button className="add" title="New project" onClick={() => ui.openProjectModal()}>
-          <Icon name="plus" size={14} />
-        </button>
+        <Tooltip label="New project">
+          <button className="add" onClick={() => ui.openProjectModal()}>
+            <Icon name="plus" size={14} />
+          </button>
+        </Tooltip>
       </div>
 
       <div className="proj-list">
@@ -124,22 +124,22 @@ export function Sidebar() {
         })}
       </div>
 
-      <button
-        className={`side-foot${mcpUrl ? " live" : ""}`}
-        title={mcpUrl ? `MCP server listening — click to copy ${mcpUrl}` : "MCP server starting…"}
-        onClick={copyMcpUrl}
+      <Tooltip
+        label={mcpUrl ? `MCP server listening — click to copy ${mcpUrl}` : "MCP server starting…"}
       >
-        <span className="mcp-dot" />
-        <span className="mcp-txt">
-          <b>MCP server</b> {mcpUrl ? "live" : "starting…"}
-          {mcpAddr && <span className="mono">{mcpAddr}</span>}
-        </span>
-        {mcpUrl && (
-          <span className="mcp-copy">
-            <Icon name="command" size={13} />
+        <button className={`side-foot${mcpUrl ? " live" : ""}`} onClick={copyMcpUrl}>
+          <span className="mcp-dot" />
+          <span className="mcp-txt">
+            <b>MCP server</b> {mcpUrl ? "live" : "starting…"}
+            {mcpAddr && <span className="mono">{mcpAddr}</span>}
           </span>
-        )}
-      </button>
+          {mcpUrl && (
+            <span className="mcp-copy">
+              <Icon name="command" size={13} />
+            </span>
+          )}
+        </button>
+      </Tooltip>
     </aside>
   );
 }

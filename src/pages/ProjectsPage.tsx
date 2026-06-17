@@ -13,7 +13,22 @@ export function ProjectsPage() {
   const aiTotal = items.filter((i) => i.assignee === "AI").length;
   void countItems;
 
-  if (loading) return <div className="view-pad page-sub">Loading…</div>;
+  if (loading) {
+    return (
+      <div className="view-pad">
+        <div className="page-head">
+          <div className="ph-text">
+            <h1 className="page-title">Projects</h1>
+          </div>
+        </div>
+        <div className="skel-grid">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div className="skel skel-card" key={i} aria-hidden="true" />
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="view-pad">

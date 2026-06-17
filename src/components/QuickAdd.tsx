@@ -5,6 +5,7 @@ import { createIssue, createTodo } from "../lib/tauri";
 import { projectHue } from "../lib/derive";
 import { Icon } from "../lib/icons";
 import { Avatar } from "./ui";
+import { Tooltip } from "./Tooltip";
 import type { Assignee, ItemKind } from "../lib/types";
 import { Menu, anchorMenu, type MenuItem, type MenuPos } from "./Menu";
 
@@ -13,7 +14,7 @@ const assigneeLabel = (a: Assignee) => (a === "AI" ? "Claude" : "You");
 
 /** Past this length the inline bar hands off to the full new-todo dialog,
  *  which has room for a long note plus a concise title. */
-const TITLE_HANDOFF_LIMIT = 50;
+const TITLE_HANDOFF_LIMIT = 80;
 
 /**
  * Detect a leading `todo`/`issue` keyword and strip it, so typing
@@ -138,18 +139,17 @@ export function QuickAdd() {
 
   return (
     <div className={`quick-add${focus ? " focus" : ""}`}>
-      <button
-        type="button"
-        className={`qa-kind ${kind}`}
-        title={
+      <Tooltip
+        label={
           kind === "issue"
             ? "Filing an issue — click for a todo (or type “todo ”)"
             : "Adding a todo — click for an issue (or type “issue ”)"
         }
-        onClick={toggleKind}
       >
-        <Icon name={kind} size={16} />
-      </button>
+        <button type="button" className={`qa-kind ${kind}`} onClick={toggleKind}>
+          <Icon name={kind} size={16} />
+        </button>
+      </Tooltip>
       <input
         ref={inputRef}
         placeholder="Add a todo… type “issue …” to file an issue"
@@ -172,34 +172,36 @@ export function QuickAdd() {
           }
         }}
       />
-      <button
-        className="prop-pill qa-assignee"
-        title="Assign to"
-        onClick={(e) =>
-          setAssigneeMenu(anchorMenu(e.currentTarget as HTMLElement, 160, "right"))
-        }
-      >
-        <Avatar assignee={assignee} size="sm" />
-        <span>{assigneeLabel(assignee)}</span>
-        <Icon name="chevDown" size={13} />
-      </button>
-      <button
-        className="prop-pill qa-proj"
-        title="Choose project"
-        onClick={(e) => setMenu(anchorMenu(e.currentTarget as HTMLElement, 200, "right"))}
-      >
-        <span
-          className="pr-glyph"
-          style={{
-            background: `color-mix(in srgb, ${hue} 22%, var(--bg-elevated))`,
-            color: hue,
-          }}
+      <Tooltip label="Assign to">
+        <button
+          className="prop-pill qa-assignee"
+          onClick={(e) =>
+            setAssigneeMenu(anchorMenu(e.currentTarget as HTMLElement, 160, "right"))
+          }
         >
-          <Icon name="project" size={11} />
-        </span>
-        <span>{current.name}</span>
-        <Icon name="chevDown" size={13} />
-      </button>
+          <Avatar assignee={assignee} size="sm" />
+          <span>{assigneeLabel(assignee)}</span>
+          <Icon name="chevDown" size={13} />
+        </button>
+      </Tooltip>
+      <Tooltip label="Choose project">
+        <button
+          className="prop-pill qa-proj"
+          onClick={(e) => setMenu(anchorMenu(e.currentTarget as HTMLElement, 200, "right"))}
+        >
+          <span
+            className="pr-glyph"
+            style={{
+              background: `color-mix(in srgb, ${hue} 22%, var(--bg-elevated))`,
+              color: hue,
+            }}
+          >
+            <Icon name="project" size={11} />
+          </span>
+          <span>{current.name}</span>
+          <Icon name="chevDown" size={13} />
+        </button>
+      </Tooltip>
       {menu && <Menu pos={menu} items={menuItems} onClose={() => setMenu(null)} />}
       {assigneeMenu && (
         <Menu pos={assigneeMenu} items={assigneeItems} onClose={() => setAssigneeMenu(null)} />

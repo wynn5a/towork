@@ -2,6 +2,7 @@ import type { CSSProperties, MouseEvent as ReactMouseEvent, ReactNode } from "re
 import { Icon, type IconName } from "../lib/icons";
 import { PRIORITY_META, STATUS_META } from "../lib/derive";
 import type { Assignee, Priority, Status } from "../lib/types";
+import { Tooltip } from "./Tooltip";
 
 /* ------------------------------- avatar ------------------------------- */
 export function Avatar({
@@ -87,11 +88,12 @@ export function IconButton({
   onClick?: (e: ReactMouseEvent) => void;
   className?: string;
 }) {
-  return (
-    <button className={`icon-btn ${className}`} title={title} onClick={onClick}>
+  const btn = (
+    <button className={`icon-btn ${className}`} onClick={onClick}>
       <Icon name={name} size={size} />
     </button>
   );
+  return title ? <Tooltip label={title}>{btn}</Tooltip> : btn;
 }
 
 /* ------------------------------ empty state --------------------------- */
