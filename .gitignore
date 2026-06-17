@@ -148,3 +148,6 @@ vite.config.ts.timestamp-*
 
 # Tauri build cache
 .tauri/
+
+# macOS
+.DS_Store
