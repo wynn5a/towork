@@ -1,0 +1,95 @@
+/* Tailwind (preflight + utilities) first so the design system can override it. */
+@import "tailwindcss";
+/* Data Buddy design-system tokens + Towork prototype styles. */
+@import "./styles/tokens.css";
+@import "./styles/app.css";
+
+#root { height: 100%; }
+
+/* ----------------------------------------------------------------
+   Sidebar MCP indicator (footer button)
+---------------------------------------------------------------- */
+button.side-foot {
+  width: 100%;
+  border: none;
+  border-top: 1px solid var(--border-soft);
+  background: transparent;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  color: inherit;
+  transition: background-color var(--dur-2) var(--ease);
+}
+button.side-foot:hover { background: var(--bg-hover); }
+button.side-foot .mcp-txt .mono {
+  display: block;
+  margin-top: 1px;
+  letter-spacing: -0.01em;
+}
+/* When the server isn't up yet, dim the dot and stop the pulse. */
+button.side-foot:not(.live) .mcp-dot {
+  background: var(--text-4);
+  box-shadow: none;
+  animation: none;
+}
+.mcp-copy {
+  display: grid;
+  place-items: center;
+  color: var(--text-4);
+  flex-shrink: 0;
+  opacity: 0;
+  transition: opacity var(--dur-2) var(--ease), color var(--dur-2) var(--ease);
+}
+button.side-foot:hover .mcp-copy { opacity: 1; }
+button.side-foot:hover .mcp-copy { color: var(--text-2); }
+
+/* ----------------------------------------------------------------
+   Simple Mode — distraction-free flat todo list (dark theme)
+---------------------------------------------------------------- */
+.simple {
+  display: flex; flex-direction: column; height: 100vh;
+  background: var(--bg-base); color: var(--text-1);
+}
+.simple-head {
+  display: flex; align-items: center; gap: 12px;
+  padding: 16px 22px; border-bottom: 1px solid var(--border);
+  -webkit-app-region: drag;
+}
+.simple-head .mode-tag {
+  display: inline-flex; align-items: center; gap: 7px;
+  font-family: var(--mono); font-size: 10.5px; font-weight: 600;
+  letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent);
+}
+.simple-head h1 { margin: 0; font-size: 15px; font-weight: 600; letter-spacing: -0.01em; }
+.simple-head .spacer { flex: 1; }
+.simple-add {
+  margin: 18px auto 10px; width: 100%; max-width: 640px;
+  display: flex; align-items: center; gap: 12px;
+  padding: 14px 16px; border-radius: var(--radius);
+  background: var(--bg-input); border: 1px solid var(--border);
+  transition: border-color var(--dur-2) var(--ease), box-shadow var(--dur-2) var(--ease);
+}
+.simple-add.focus { border-color: transparent; box-shadow: 0 0 0 1px var(--accent-line); }
+.simple-add .qa-ring { width: 18px; height: 18px; border-radius: 99px; flex-shrink: 0; border: 1.5px dashed var(--text-4); }
+.simple-add input {
+  flex: 1; min-width: 0; border: none; outline: none; background: transparent;
+  color: var(--text-1); font-family: inherit; font-size: 15px; letter-spacing: -0.008em;
+}
+.simple-add input::placeholder { color: var(--text-4); }
+.simple-list { flex: 1; overflow-y: auto; width: 100%; max-width: 640px; margin: 0 auto; padding: 6px 0 40px; }
+.simple-row {
+  display: flex; align-items: center; gap: 12px; padding: 11px 14px;
+  border-radius: var(--radius-sm); cursor: pointer;
+  border: 1px solid transparent;
+  transition: background-color var(--dur-2) var(--ease), border-color var(--dur-2) var(--ease);
+}
+.simple-row:hover { background: var(--bg-hover); }
+.simple-row.sel { background: var(--accent-soft); border-color: var(--accent-line); }
+.simple-row .s-title { flex: 1; min-width: 0; font-size: 14.5px; color: var(--text-1); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.simple-row .s-proj { font-size: 11px; color: var(--text-4); font-family: var(--mono); flex-shrink: 0; }
+.simple-foot {
+  display: flex; gap: 18px; justify-content: center;
+  padding: 12px; border-top: 1px solid var(--border);
+  font-size: 11.5px; color: var(--text-4);
+}
+.simple-foot b { color: var(--text-3); font-weight: 500; }
