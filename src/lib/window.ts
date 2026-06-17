@@ -61,8 +61,9 @@ export async function animateWindowWidth(
       const t = Math.min(1, (now - start) / duration);
       const w = startW + (targetWidth - startW) * easeInOut(t);
       // Fire-and-forget: ~16 IPC calls over the animation is cheap, and not
-      // awaiting keeps the steps in sync with the display's refresh.
-      void win.setSize(new LogicalSize(Math.round(w), Math.round(height)));
+      // awaiting keeps the steps in sync with the display's refresh. Swallow
+      // per-frame rejections (enter/exit surface capability errors via setMinSize).
+      void win.setSize(new LogicalSize(Math.round(w), Math.round(height))).catch(() => {});
       if (t < 1) requestAnimationFrame(step);
       else resolve();
     };
@@ -73,24 +74,33 @@ export async function animateWindowWidth(
 /** Shrink to the narrow Simple-mode window, remembering the current width. */
 export async function enterSimpleWindow(): Promise<void> {
   if (!inTauri()) return;
-  const win = getCurrentWindow();
-  // Record the current width as the Complete-mode width to restore later — but
-  // only if it's genuinely wide. Re-entering mid-transition (or React
-  // StrictMode's double-invoked effect in dev) can observe an already-narrow
-  // width; in that case keep the previously saved value.
-  const current = Math.round((await logicalSize()).width);
-  if (current > SIMPLE_WIDTH + 40) savedCompleteWidth = current;
-  // Relax the min first so the narrow target isn't clamped to the Complete min.
-  await win.setMinSize(new LogicalSize(SIMPLE_MIN.w, SIMPLE_MIN.h));
-  await animateWindowWidth(SIMPLE_WIDTH);
+  try {
+    const win = getCurrentWindow();
+    // Record the current width as the Complete-mode width to restore later —
+    // but only if it's genuinely wide. Re-entering mid-transition (or React
+    // StrictMode's double-invoked effect in dev) can observe an already-narrow
+    // width; in that case keep the previously saved value.
+    const current = Math.round((await logicalSize()).width);
+    if (current > SIMPLE_WIDTH + 40) savedCompleteWidth = current;
+    // Relax the min first so the narrow target isn't clamped to the Complete min.
+    await win.setMinSize(new LogicalSize(SIMPLE_MIN.w, SIMPLE_MIN.h));
+    await animateWindowWidth(SIMPLE_WIDTH);
+  } catch (err) {
+    // Most likely a missing window capability — log rather than fail silently.
+    console.warn("enterSimpleWindow failed:", err);
+  }
 }
 
 /** Grow back to the remembered Complete-mode width and restore its min size. */
 export async function exitSimpleWindow(): Promise<void> {
   if (!inTauri()) return;
-  const target = savedCompleteWidth ?? DEFAULT_COMPLETE_WIDTH;
-  // Animate up first, then re-apply the larger min (setting it earlier would
-  // make Tauri snap to it instantly and skip the animation).
-  await animateWindowWidth(target);
-  await getCurrentWindow().setMinSize(new LogicalSize(COMPLETE_MIN.w, COMPLETE_MIN.h));
+  try {
+    const target = savedCompleteWidth ?? DEFAULT_COMPLETE_WIDTH;
+    // Animate up first, then re-apply the larger min (setting it earlier would
+    // make Tauri snap to it instantly and skip the animation).
+    await animateWindowWidth(target);
+    await getCurrentWindow().setMinSize(new LogicalSize(COMPLETE_MIN.w, COMPLETE_MIN.h));
+  } catch (err) {
+    console.warn("exitSimpleWindow failed:", err);
+  }
 }
