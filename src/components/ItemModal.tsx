@@ -15,6 +15,7 @@ import { Avatar, IconButton, Kbd, Toggle } from "./ui";
 import { Tooltip } from "./Tooltip";
 import { Menu, anchorMenu, type MenuItem, type MenuPos } from "./Menu";
 import { ConfirmDialog } from "./ConfirmDialog";
+import { ActivityTimeline } from "./ActivityTimeline";
 
 export interface ItemModalConfig {
   kind: ItemKind;
@@ -49,6 +50,7 @@ export function ItemModal({
   const [createMore, setCreateMore] = useState(false);
   const [menu, setMenu] = useState<{ key: PropKey; pos: MenuPos } | null>(null);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [showActivity, setShowActivity] = useState(false);
 
   const titleRef = useRef<HTMLInputElement>(null);
   const descRef = useRef<HTMLTextAreaElement>(null);
@@ -184,6 +186,15 @@ export function ItemModal({
           </span>
           <span className="idlg-context">{crumb}</span>
           <div className="idlg-head-actions">
+            {existing && (
+              <IconButton
+                name="activity"
+                size={16}
+                title={showActivity ? "Hide activity" : "Show activity"}
+                className={showActivity ? "active" : ""}
+                onClick={() => setShowActivity((v) => !v)}
+              />
+            )}
             <IconButton name="x" size={16} title="Close" onClick={onClose} />
           </div>
         </div>
@@ -210,6 +221,15 @@ export function ItemModal({
             value={desc}
             onChange={(e) => setDesc(e.target.value)}
           />
+          {existing && showActivity && (
+            <div className="idlg-activity">
+              <div className="section-label">Activity</div>
+              <ActivityTimeline
+                itemId={existing.id}
+                itemType={existing.kind === "todo" ? "Todo" : "Issue"}
+              />
+            </div>
+          )}
         </div>
 
         <div className="idlg-props">

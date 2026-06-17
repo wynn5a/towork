@@ -43,11 +43,13 @@ pub fn create_issue(
     let issue = Issue::new(project_id, title, description, priority, Some(actor));
     schema::insert_issue(&conn, &issue).map_err(|e| e.to_string())?;
 
+    // The creator is the GUI user, even when the item is *assigned* to AI —
+    // only items created over MCP are authored by Claude.
     let activity = ActivityLog::new(
         "Issue".into(),
         issue.id.clone(),
         "Created".into(),
-        actor,
+        Actor::User,
         None,
         Some(issue.title.clone()),
     );

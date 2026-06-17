@@ -42,11 +42,13 @@ pub fn create_todo(
     let todo = Todo::new(project_id, title, description, priority, Some(actor));
     schema::insert_todo(&conn, &todo).map_err(|e| e.to_string())?;
 
+    // The creator is the GUI user, even when the item is *assigned* to AI —
+    // only items created over MCP are authored by Claude.
     let activity = ActivityLog::new(
         "Todo".into(),
         todo.id.clone(),
         "Created".into(),
-        actor,
+        Actor::User,
         None,
         Some(todo.title.clone()),
     );

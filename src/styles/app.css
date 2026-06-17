@@ -196,6 +196,7 @@ button { font-family: inherit; }
 }
 .icon-btn:hover { background: var(--bg-active); color: var(--text-1); }
 .icon-btn:active { transform: scale(0.9); }
+.icon-btn.active { background: var(--bg-active); color: var(--accent); }
 .kbd {
   font-family: var(--mono); font-size: 10.5px; padding: 1.5px 5px; border-radius: 4px;
   background: var(--bg-elevated); border: 1px solid var(--border); color: var(--text-2); line-height: 1;
@@ -356,9 +357,9 @@ button { font-family: inherit; }
 .item-check {
   width: 18px; height: 18px; padding: 0; border-radius: 99px; flex-shrink: 0;
   border: 1.5px solid var(--text-4); background: transparent; cursor: pointer; display: grid; place-items: center;
-  color: transparent; transition: border-color var(--dur-2) var(--ease), background-color var(--dur-2) var(--ease), color var(--dur-2) var(--ease), transform var(--dur-2) var(--ease-spring);
+  color: transparent; transition: border-color var(--dur-2) var(--ease), background-color var(--dur-2) var(--ease), color var(--dur-2) var(--ease), transform var(--dur-2) var(--ease);
 }
-.item-check:active { transform: scale(0.85); }
+.item-check:active { transform: scale(0.9); }
 .item-check svg { display: block; }
 .item-check:hover { border-color: var(--green); }
 .item-row.done .item-check { background: var(--green); border-color: var(--green); color: #08130b; }
@@ -373,7 +374,7 @@ button { font-family: inherit; }
 /* ----------------------------------------------------------------
    Skeleton loading — shimmering placeholders for lists / card grids
 ---------------------------------------------------------------- */
-.skeleton-list { display: flex; flex-direction: column; animation: row-in-left var(--dur-4) var(--ease-out); }
+.skeleton-list { display: flex; flex-direction: column; animation: list-fade var(--dur-4) var(--ease-out); }
 .skel-row {
   display: flex; align-items: center; gap: 11px;
   padding: calc(9px * var(--d-scale)) 8px; border-bottom: 1px solid var(--border-soft);
@@ -574,6 +575,16 @@ textarea.input { resize: vertical; min-height: 64px; line-height: 1.55; }
 }
 .idlg-desc::placeholder { color: var(--text-4); }
 
+/* item activity panel (expanded from the dialog header) */
+.idlg-activity {
+  margin-top: 8px; padding-top: 13px; border-top: 1px solid var(--border-soft);
+  max-height: 240px; overflow-y: auto;
+  animation: view-in var(--dur-3) var(--ease-out);
+}
+.idlg-activity .section-label { margin-top: 0; }
+.idlg-activity .timeline { margin-top: 6px; }
+.idlg-activity .empty { padding: 24px 16px; }
+
 .idlg-props { display: flex; flex-wrap: wrap; gap: 8px; padding: 10px 18px 18px; }
 .prop-pill {
   display: inline-flex; align-items: center; gap: 7px; padding: 5px 12px 5px 9px;
@@ -712,14 +723,30 @@ textarea.input { resize: vertical; min-height: 64px; line-height: 1.55; }
 .item-list .item-row:nth-child(8) { animation-delay: 168ms; }
 .item-list .item-row:nth-child(n+9) { animation-delay: 190ms; }
 @keyframes row-in { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: none; } }
-@keyframes row-in-left { from { opacity: 0; transform: translateX(-16px); } to { opacity: 1; transform: none; } }
-/* Home page reveals its rows left-to-right rather than bottom-up (keeps the
-   top-to-bottom stagger from the .item-list nth-child delays above). */
-.home-list .item-row { animation-name: row-in-left; }
+@keyframes list-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes done-fade-in {
+  from { opacity: 0; transform: translateX(-14px); }
+  to { opacity: 0.55; transform: none; }
+}
+/* Home open rows: simple fade + stagger. Done-only lists slide in left-to-right. */
+.home-list .item-row:not(.done) { animation-name: list-fade; }
+.item-list--done .item-row {
+  animation: done-fade-in 400ms var(--ease-out) both;
+  transition: background-color var(--dur-2) var(--ease);
+}
+.item-list--done .item-row:nth-child(1) { animation-delay: 0ms; }
+.item-list--done .item-row:nth-child(2) { animation-delay: 40ms; }
+.item-list--done .item-row:nth-child(3) { animation-delay: 80ms; }
+.item-list--done .item-row:nth-child(4) { animation-delay: 120ms; }
+.item-list--done .item-row:nth-child(5) { animation-delay: 160ms; }
+.item-list--done .item-row:nth-child(6) { animation-delay: 200ms; }
+.item-list--done .item-row:nth-child(7) { animation-delay: 240ms; }
+.item-list--done .item-row:nth-child(8) { animation-delay: 280ms; }
+.item-list--done .item-row:nth-child(n+9) { animation-delay: 320ms; }
 
-/* The checkmark springs in when a row flips to Done. */
-.item-row.done .item-check svg { animation: check-pop var(--dur-3) var(--ease-spring); }
-@keyframes check-pop { 0% { transform: scale(0); } 60% { transform: scale(1.18); } 100% { transform: scale(1); } }
+/* The checkmark simply fades in when a row flips to Done. */
+.item-row.done .item-check svg { animation: check-pop var(--dur-2) var(--ease-out); }
+@keyframes check-pop { from { opacity: 0; } to { opacity: 1; } }
 
 /* Project cards rise + stagger into the grid. */
 .proj-grid .proj-card { animation: card-in var(--dur-4) var(--ease-out) backwards; }

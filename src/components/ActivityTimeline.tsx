@@ -26,18 +26,26 @@ function phrase(a: ActivityLog): string {
   }
 }
 
-export function ActivityTimeline({ projectId }: { projectId: string }) {
+export function ActivityTimeline({
+  projectId,
+  itemId,
+  itemType,
+}: {
+  projectId?: string;
+  itemId?: string;
+  itemType?: "Todo" | "Issue";
+}) {
   const [activity, setActivity] = useState<ActivityLog[] | null>(null);
 
   useEffect(() => {
     let alive = true;
-    getActivity({ projectId })
+    getActivity({ projectId, itemId, itemType })
       .then((a) => alive && setActivity(a))
       .catch(() => alive && setActivity([]));
     return () => {
       alive = false;
     };
-  }, [projectId]);
+  }, [projectId, itemId, itemType]);
 
   if (activity === null) return <div className="page-sub">Loading…</div>;
   if (activity.length === 0) {

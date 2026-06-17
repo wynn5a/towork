@@ -220,6 +220,7 @@ function ListSection({
   // Clamp in case the list shrank (e.g. an item was toggled into another section).
   const current = Math.min(page, pageCount - 1);
   const visible = items.slice(current * PAGE_SIZE, current * PAGE_SIZE + PAGE_SIZE);
+  const allDone = items.every((i) => i.status === "Done");
 
   return (
     <>
@@ -228,7 +229,7 @@ function ListSection({
           {label} <Count>{items.length}</Count>
         </SectionLabel>
       )}
-      <div className="item-list">
+      <div className={`item-list${allDone ? " item-list--done" : ""}`}>
         {visible.map((it) => (
           <ItemRow
             key={it.id}

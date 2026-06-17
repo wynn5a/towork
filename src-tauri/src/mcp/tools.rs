@@ -147,20 +147,22 @@ pub fn call_tool(conn: &Connection, name: &str, args: Value) -> Result<Value, St
             let title = require(&args, "title")?.to_string();
             let description = owned(&args, "description");
             let priority = owned(&args, "priority");
-            // MCP mutations are attributed to AI unless an explicit assignee is given.
+            // Assignee defaults to AI but may be set explicitly. The creator,
+            // logged on the "Created" entry, is always AI — items made over MCP
+            // are authored by Claude regardless of whom they're assigned to.
             let actor = Actor::from_str(str_arg(&args, "assignee").unwrap_or("AI"));
 
             let value = match item_type {
                 "Todo" => {
                     let todo = Todo::new(project_id, title, description, priority, Some(actor));
                     schema::insert_todo(conn, &todo).map_err(|e| e.to_string())?;
-                    log(conn, "Todo", &todo.id, "Created", actor, None, Some(todo.title.clone()))?;
+                    log(conn, "Todo", &todo.id, "Created", Actor::AI, None, Some(todo.title.clone()))?;
                     json!(todo)
                 }
                 "Issue" => {
                     let issue = Issue::new(project_id, title, description, priority, Some(actor));
                     schema::insert_issue(conn, &issue).map_err(|e| e.to_string())?;
-                    log(conn, "Issue", &issue.id, "Created", actor, None, Some(issue.title.clone()))?;
+                    log(conn, "Issue", &issue.id, "Created", Actor::AI, None, Some(issue.title.clone()))?;
                     json!(issue)
                 }
                 _ => return Err("item_type must be Todo or Issue".into()),
