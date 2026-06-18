@@ -7,9 +7,12 @@ import { Tooltip } from "./Tooltip";
 import { Icon, type IconName } from "../lib/icons";
 
 /** How the unified list is sliced into labelled sections. `none` is a single
- *  unlabelled section — used inside a tab that is already scoped (e.g. a Status
- *  tab), so the section header doesn't just repeat the tab name. */
-export type GroupMode = "status" | "project" | "date" | "none";
+ *  unlabelled section (open-then-done) — used inside a tab that is already
+ *  scoped (e.g. a Status tab), so the section header doesn't just repeat the
+ *  tab name. `flat` is also a single unlabelled section but preserves the
+ *  caller's incoming order — used when a sub-tab already supplies its own
+ *  ordering (e.g. the project page's Group-by buckets). */
+export type GroupMode = "status" | "project" | "date" | "none" | "flat";
 
 /** Open items: order High → Medium → Low. Equal priorities keep their incoming
  *  (creation) order since Array.prototype.sort is stable. */
@@ -58,6 +61,12 @@ interface Section {
 function buildSections(items: Item[], groupBy: GroupMode, projects: Project[]): Section[] {
   if (groupBy === "none") {
     return items.length ? [{ key: "all", label: "", items: openThenDone(items) }] : [];
+  }
+
+  if (groupBy === "flat") {
+    // Caller has already ordered the items (and usually scoped them to a tab);
+    // present them as-is in one unlabelled section.
+    return items.length ? [{ key: "all", label: "", items }] : [];
   }
 
   if (groupBy === "project") {

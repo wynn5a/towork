@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { useStore } from "../lib/store";
-import { completeTodo, createTodo } from "../lib/tauri";
+import { completeIssue, completeTodo, createIssue, createTodo } from "../lib/tauri";
+import type { Item, ItemKind } from "../lib/types";
 import { PRIORITY_META, PRIORITY_RANK } from "../lib/derive";
 import { useDoubleControl } from "../lib/useDoubleControl";
 import { useUI } from "../lib/ui";
@@ -13,8 +14,8 @@ import { enterSimpleWindow, exitSimpleWindow } from "../lib/window";
 const TITLE_HANDOFF_LIMIT = 50;
 
 /**
- * Simple Mode — a distraction-free flat list of open todos across all projects,
- * sorted High → Low. Keyboard: ↑/↓ navigate, Enter completes, Esc / double-Control exits.
+ * Simple Mode — a distraction-free flat list of open todos and issues across all
+ * projects, sorted High → Low. Keyboard: ↑/↓ navigate, Enter completes, Esc / double-Control exits.
  */
 export function SimpleModePage() {
   const { items, projects, reload, projectById } = useStore();
@@ -28,8 +29,8 @@ export function SimpleModePage() {
   const exit = () => navigate("/");
   useDoubleControl(exit);
 
-  const todos = items
-    .filter((i) => i.kind === "todo" && i.status !== "Done")
+  const openItems = items
+    .filter((i) => i.status !== "Done")
     .sort((a, b) => PRIORITY_RANK[a.priority] - PRIORITY_RANK[b.priority]);
 
   useEffect(() => {
@@ -44,30 +45,40 @@ export function SimpleModePage() {
     };
   }, []);
   useEffect(() => {
-    if (sel >= todos.length) setSel(Math.max(0, todos.length - 1));
-  }, [todos.length, sel]);
+    if (sel >= openItems.length) setSel(Math.max(0, openItems.length - 1));
+  }, [openItems.length, sel]);
 
-  /** Resolve the destination project + clean title, honoring `#project` routing. */
+  /** Resolve the kind + destination project + clean title, honoring a leading
+   *  `issue`/`todo` keyword and `#project` routing. Mirrors QuickAdd's parsing —
+   *  Simple mode keeps its own self-contained copy. */
   function resolve(raw: string) {
+    let kind: ItemKind = "todo";
     let title = raw;
+    // keyword + separator (`:`/`-`) or whitespace, so "issue: x", "issue x" and
+    // "issue:x" match but "issues"/"issuex" don't.
+    const m = raw.match(/^\s*(issue|todo)(?:[:-]\s*|\s+)/i);
+    if (m) {
+      kind = m[1].toLowerCase() as ItemKind;
+      title = raw.slice(m[0].length);
+    }
     let target = projects[0];
-    const hash = raw.match(/#(\S+)/);
+    const hash = title.match(/#(\S+)/);
     if (hash) {
       const match = projects.find((p) => p.name.toLowerCase() === hash[1].toLowerCase());
       if (match) {
         target = match;
-        title = raw.replace(/#\S+/, "").trim();
+        title = title.replace(/#\S+/, "").trim();
       }
     }
-    return { title, target };
+    return { kind, title, target };
   }
 
   async function add() {
     const raw = text.trim();
     if (!raw) return;
-    const { title, target } = resolve(raw);
+    const { kind, title, target } = resolve(raw);
     if (!target || !title) return;
-    await createTodo(target.id, title);
+    await (kind === "issue" ? createIssue : createTodo)(target.id, title);
     setText("");
     await reload();
   }
@@ -75,28 +86,28 @@ export function SimpleModePage() {
   /** Long text deserves the full dialog. The typed words go into the
    *  description; the title is left blank for the user to fill (required). */
   function handoffToDialog(raw: string) {
-    const { title, target } = resolve(raw);
+    const { kind, title, target } = resolve(raw);
     if (!target) return;
-    ui.openItemModal({ kind: "todo", projectId: target.id, draft: { description: title || raw } });
+    ui.openItemModal({ kind, projectId: target.id, draft: { description: title || raw } });
     setText("");
   }
 
-  async function complete(id: string) {
-    await completeTodo(id);
+  async function complete(item: Item) {
+    await (item.kind === "issue" ? completeIssue(item.id) : completeTodo(item.id));
     await reload();
   }
 
   function onListKey(e: ReactKeyboardEvent) {
     if (e.key === "ArrowDown") {
       e.preventDefault();
-      setSel((i) => Math.min(i + 1, todos.length - 1));
+      setSel((i) => Math.min(i + 1, openItems.length - 1));
     } else if (e.key === "ArrowUp") {
       e.preventDefault();
       setSel((i) => Math.max(i - 1, 0));
     } else if (e.key === "Enter") {
       e.preventDefault();
-      const t = todos[sel];
-      if (t) complete(t.id);
+      const t = openItems[sel];
+      if (t) complete(t);
     } else if (e.key === "Escape") {
       exit();
     }
@@ -109,9 +120,9 @@ export function SimpleModePage() {
           <Icon name="target" size={13} />
           Simple mode
         </span>
-        {todos.length > 0 && (
+        {openItems.length > 0 && (
           <span className="simple-count">
-            {todos.length} open · sorted by priority
+            {openItems.length} open · sorted by priority
           </span>
         )}
         <div className="spacer" />
@@ -125,7 +136,7 @@ export function SimpleModePage() {
         <input
           ref={inputRef}
           value={text}
-          placeholder="Add a todo…  use #project to route it"
+          placeholder="Add a todo…  use #project to route it · prefix with issue to file one"
           onChange={(e) => {
             const v = e.target.value;
             if (v.length > TITLE_HANDOFF_LIMIT) {
@@ -146,12 +157,12 @@ export function SimpleModePage() {
       </div>
 
       <div className="simple-list">
-        {todos.length === 0 ? (
+        {openItems.length === 0 ? (
           <div className="page-sub" style={{ textAlign: "center", padding: "48px 0" }}>
-            No open todos. Add one above.
+            No open items. Add one above.
           </div>
         ) : (
-          todos.map((t, i) => {
+          openItems.map((t, i) => {
             const project = projectById(t.project_id);
             return (
               <div
@@ -159,7 +170,7 @@ export function SimpleModePage() {
                 className={`simple-row${i === sel ? " sel" : ""}`}
                 onMouseEnter={() => setSel(i)}
                 onClick={() =>
-                  ui.openItemModal({ kind: "todo", projectId: t.project_id, itemId: t.id })
+                  ui.openItemModal({ kind: t.kind, projectId: t.project_id, itemId: t.id })
                 }
               >
                 <button
@@ -167,13 +178,16 @@ export function SimpleModePage() {
                   title="Mark done"
                   onClick={(e) => {
                     e.stopPropagation();
-                    complete(t.id);
+                    complete(t);
                   }}
                 >
                   <Icon name="check" size={11} stroke="#08130b" />
                 </button>
                 <span className="row-pri" title={`${PRIORITY_META[t.priority].label} priority`}>
                   <Icon name="signal" size={14} stroke={PRIORITY_META[t.priority].hue} />
+                </span>
+                <span className="s-kind" title={t.kind === "issue" ? "Issue" : "Todo"}>
+                  <Icon name={t.kind} size={14} stroke="var(--text-3)" />
                 </span>
                 <span className="s-title">{t.title}</span>
                 {project && <span className="s-proj">{project.name}</span>}

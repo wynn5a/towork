@@ -8,9 +8,60 @@ import { ActivityTimeline } from "../components/ActivityTimeline";
 import { Count, EmptyState } from "../components/ui";
 import { Icon } from "../lib/icons";
 import { Menu, anchorMenu, type MenuPos } from "../components/Menu";
-import type { ItemKind } from "../lib/types";
+import { PRIORITY_RANK } from "../lib/derive";
+import type { Item, ItemKind } from "../lib/types";
 
 type Tab = "todos" | "issues" | "activity";
+type GroupBy = "status" | "date";
+
+/** Most urgent first (High → Medium → Low); ties keep creation order. */
+const byUrgency = (a: Item, b: Item) => PRIORITY_RANK[a.priority] - PRIORITY_RANK[b.priority];
+/** Newest-created first (ISO strings sort chronologically). */
+const byCreatedDesc = (a: Item, b: Item) => b.created_at.localeCompare(a.created_at);
+
+interface Bucket {
+  key: string;
+  label: string;
+  items: Item[];
+}
+
+/** Coarse calendar bucket for the Group-by-date tabs (local day boundaries). */
+function dateRank(iso: string): 0 | 1 | 2 {
+  const startOfDay = (t: number) => {
+    const x = new Date(t);
+    return new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+  };
+  const today = startOfDay(Date.now());
+  const t = startOfDay(new Date(iso).getTime());
+  if (t >= today) return 0; // Today
+  if (t >= today - 86_400_000) return 1; // Yesterday
+  return 2; // Older
+}
+
+/** Slice items into the Group-by sub-tab buckets, dropping any that are empty.
+ *  Each bucket arrives pre-ordered so the list can render it flat. */
+function buildBuckets(items: Item[], groupBy: GroupBy): Bucket[] {
+  if (groupBy === "date") {
+    const labels = ["Today", "Yesterday", "Older"] as const;
+    const slots: Item[][] = [[], [], []];
+    for (const it of items) slots[dateRank(it.created_at)].push(it);
+    return labels
+      .map((label, rank) => ({
+        key: `date-${rank}`,
+        label,
+        items: slots[rank].slice().sort(byCreatedDesc),
+      }))
+      .filter((b) => b.items.length > 0);
+  }
+
+  // status — Todo (open) / Done tabs, each ordered by urgency.
+  const todo = items.filter((i) => i.status !== "Done").sort(byUrgency);
+  const done = items.filter((i) => i.status === "Done").sort(byUrgency);
+  return [
+    { key: "todo", label: "Todo", items: todo },
+    { key: "done", label: "Done", items: done },
+  ].filter((b) => b.items.length > 0);
+}
 
 export function ProjectPage() {
   const { id = "" } = useParams<{ id: string }>();
@@ -18,6 +69,8 @@ export function ProjectPage() {
   const ui = useUI();
   const { toggleDone } = useItemActions();
   const [tab, setTab] = useState<Tab>("todos");
+  const [groupBy, setGroupBy] = useState<GroupBy>("status");
+  const [subTab, setSubTab] = useState<string | null>(null);
   const [menu, setMenu] = useState<MenuPos | null>(null);
 
   const project = projectById(id);
@@ -59,6 +112,13 @@ export function ProjectPage() {
     </button>
   );
 
+  const kind: ItemKind = tab === "issues" ? "issue" : "todo";
+  const activeItems = tab === "issues" ? issues : todos;
+  const buckets = buildBuckets(activeItems, groupBy);
+  // Resolve the active sub-tab: keep the selection if it still has items,
+  // otherwise fall back to the first available bucket.
+  const active = buckets.find((b) => b.key === subTab) ?? buckets[0] ?? null;
+
   return (
     <div className="view-pad">
       <div className="page-head">
@@ -67,6 +127,32 @@ export function ProjectPage() {
           {project.description && <p className="page-sub">{project.description}</p>}
         </div>
         <div className="ph-actions">
+          {tab !== "activity" && (
+            <div className="seg" role="tablist" aria-label="Group by">
+              <button
+                className={`seg-btn${groupBy === "status" ? " sel" : ""}`}
+                onClick={() => {
+                  setGroupBy("status");
+                  setSubTab(null);
+                }}
+                title="Group by status"
+              >
+                <Icon name="signal" size={13} />
+                Status
+              </button>
+              <button
+                className={`seg-btn${groupBy === "date" ? " sel" : ""}`}
+                onClick={() => {
+                  setGroupBy("date");
+                  setSubTab(null);
+                }}
+                title="Group by date"
+              >
+                <Icon name="clock" size={13} />
+                Date
+              </button>
+            </div>
+          )}
           <button
             className="icon-btn"
             title="More"
@@ -88,16 +174,32 @@ export function ProjectPage() {
       ) : (
         <>
           <div className="page-head" style={{ marginBottom: 16 }}>
-            <div className="ph-text" />
+            <div className="ph-text">
+              {buckets.length > 0 && (
+                <div className="tabbar tabbar--sub">
+                  {buckets.map((b) => (
+                    <button
+                      key={b.key}
+                      className={`tab${active?.key === b.key ? " active" : ""}`}
+                      onClick={() => setSubTab(b.key)}
+                    >
+                      {b.label} <Count>{b.items.length}</Count>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
             <div className="ph-actions">
-              <button className="btn-secondary" onClick={() => openOpen(tab === "issues" ? "issue" : "todo")}>
+              <button className="btn-secondary" onClick={() => openOpen(kind)}>
                 <Icon name="plus" size={14} />
                 {tab === "issues" ? "New issue" : "New todo"}
               </button>
             </div>
           </div>
           <ItemList
-            items={tab === "issues" ? issues : todos}
+            key={`${tab}-${groupBy}-${active?.key ?? "empty"}`}
+            items={active?.items ?? []}
+            groupBy="flat"
             emptyIcon={tab === "issues" ? "issue" : "todo"}
             emptyTitle={tab === "issues" ? "No issues yet" : "No todos yet"}
             emptyDescription={
@@ -106,7 +208,7 @@ export function ProjectPage() {
                 : "Break the work into todos. Claude can create and complete them too."
             }
             emptyAction={
-              <button className="btn-chip" onClick={() => openOpen(tab === "issues" ? "issue" : "todo")}>
+              <button className="btn-chip" onClick={() => openOpen(kind)}>
                 <Icon name="plus" size={13} />
                 New {tab === "issues" ? "issue" : "todo"}
               </button>

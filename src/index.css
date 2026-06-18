@@ -88,6 +88,8 @@ button.side-foot:hover .mcp-copy { color: var(--text-2); }
 }
 .simple-row:hover { background: var(--bg-hover); }
 .simple-row.sel { background: var(--accent-soft); border-color: var(--accent-line); }
+.simple-row .s-kind { display: grid; place-items: center; flex-shrink: 0; }
+.simple-row .s-kind svg { display: block; }
 .simple-row .s-title { flex: 1; min-width: 0; font-size: 14.5px; color: var(--text-1); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .simple-row .s-proj { font-size: 11px; color: var(--text-4); font-family: var(--mono); flex-shrink: 0; }
 .simple-foot {

@@ -137,7 +137,7 @@ button { font-family: inherit; }
 ---------------------------------------------------------------- */
 .main { flex: 1; min-width: 0; display: flex; flex-direction: column; overflow: hidden; background: var(--bg-base); }
 .main-scroll { flex: 1; overflow-y: auto; }
-.view-pad { max-width: 1080px; margin: 0 auto; padding: 34px 40px 60px; }
+.view-pad { max-width: 1080px; margin: 0 auto; padding: 18px 40px 60px; }
 
 /* page header */
 .page-head { display: flex; align-items: flex-start; gap: 16px; margin-bottom: 26px; }
@@ -279,6 +279,10 @@ button { font-family: inherit; }
    Tabs (DS underline tabs)
 ---------------------------------------------------------------- */
 .tabbar { display: flex; gap: 2px; border-bottom: 1px solid var(--border); margin-bottom: 22px; }
+/* Secondary tabbar (e.g. project Group-by buckets) sits inline in an action
+   row, so it drops the large bottom margin while keeping the tab underline. */
+.tabbar--sub { margin-bottom: 0; }
+.tabbar--sub .tab { padding: 6px 12px; font-size: 12.5px; }
 .tab {
   display: flex; align-items: center; gap: 8px; padding: 10px 14px; font-size: 13px; color: var(--text-3);
   border-bottom: 2px solid transparent; margin-bottom: -1px; cursor: pointer; background: none; border-top: none; border-left: none; border-right: none;
