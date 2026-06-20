@@ -99,11 +99,15 @@ function buildSections(items: Item[], groupBy: GroupMode, projects: Project[]): 
       }));
   }
 
-  // status (default) — the classic Open / Done split.
-  const open = items.filter((i) => i.status !== "Done").sort(byPriority);
+  // status (default) — the Open / In Progress / Done lifecycle split. Active
+  // work (Open, In Progress) is ordered by priority; Done by completion recency.
+  const open = items.filter((i) => i.status === "Open").sort(byPriority);
+  const inProgress = items.filter((i) => i.status === "In Progress").sort(byPriority);
   const done = items.filter((i) => i.status === "Done").sort(byCompleted);
   const sections: Section[] = [];
   if (open.length) sections.push({ key: "open", label: "Open", items: open });
+  if (inProgress.length)
+    sections.push({ key: "in-progress", label: "In Progress", items: inProgress });
   if (done.length) sections.push({ key: "done", label: "Done", items: done });
   return sections;
 }

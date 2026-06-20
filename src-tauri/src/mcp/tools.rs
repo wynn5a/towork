@@ -19,7 +19,7 @@ pub fn list_tools() -> Value {
                 "type": "object",
                 "properties": {
                     "project_id": { "type": "string" },
-                    "status": { "type": "string", "enum": ["Open", "Done"] },
+                    "status": { "type": "string", "enum": ["Open", "In Progress", "Done"] },
                     "priority": { "type": "string", "enum": ["Low", "Medium", "High"] },
                     "assignee": { "type": "string", "enum": ["User", "AI"] },
                     "item_type": { "type": "string", "enum": ["Todo", "Issue"] }
@@ -52,7 +52,7 @@ pub fn list_tools() -> Value {
                     "item_type": { "type": "string", "enum": ["Todo", "Issue"] },
                     "title": { "type": "string" },
                     "description": { "type": "string" },
-                    "status": { "type": "string", "enum": ["Open", "Done"] },
+                    "status": { "type": "string", "enum": ["Open", "In Progress", "Done"] },
                     "priority": { "type": "string", "enum": ["Low", "Medium", "High"] },
                     "assignee": { "type": "string", "enum": ["User", "AI"] }
                 },

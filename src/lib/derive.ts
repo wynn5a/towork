@@ -18,6 +18,7 @@ export const PRIORITY_META: Record<Priority, { label: string; hue: string }> = {
 
 export const STATUS_META: Record<Status, { label: string; hue: string }> = {
   Open: { label: "Open", hue: "var(--text-3)" },
+  "In Progress": { label: "In Progress", hue: "var(--accent)" },
   Done: { label: "Done", hue: "var(--green)" },
 };
 

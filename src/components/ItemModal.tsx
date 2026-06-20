@@ -133,7 +133,7 @@ export function ItemModal({
 
   function menuItems(key: PropKey): MenuItem[] {
     if (key === "status") {
-      return (["Open", "Done"] as Status[]).map((v) => ({
+      return (["Open", "In Progress", "Done"] as Status[]).map((v) => ({
         key: v,
         label: STATUS_META[v].label,
         lead: <span className="pdot" style={{ background: STATUS_META[v].hue }} />,

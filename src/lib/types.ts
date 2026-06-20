@@ -1,4 +1,4 @@
-export type Status = "Open" | "Done";
+export type Status = "Open" | "In Progress" | "Done";
 export type Priority = "Low" | "Medium" | "High";
 export type Assignee = "User" | "AI";
 export type ItemKind = "todo" | "issue";
