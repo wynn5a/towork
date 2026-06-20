@@ -16,6 +16,9 @@ const assigneeLabel = (a: Assignee) => (a === "AI" ? "Claude" : "You");
  *  which has room for a long note plus a concise title. */
 const TITLE_HANDOFF_LIMIT = 80;
 
+/** Remembers the last project picked in the quick-add bar across sessions. */
+const LAST_PROJECT_KEY = "towork:quickadd:lastProject";
+
 /**
  * Detect a leading `todo`/`issue` keyword and strip it, so typing
  * `issue: login broken` (or `Issue login broken`) files an issue instead of a
@@ -39,7 +42,11 @@ export function QuickAdd() {
   const ui = useUI();
   const [text, setText] = useState("");
   const [focus, setFocus] = useState(false);
-  const [projId, setProjId] = useState<string | null>(projects[0]?.id ?? null);
+  // Restore the last-picked project from localStorage; `projects` may be empty
+  // on first render and populate after load, so `current` resolves the fallback.
+  const [projId, setProjId] = useState<string | null>(
+    () => localStorage.getItem(LAST_PROJECT_KEY),
+  );
   const [assignee, setAssignee] = useState<Assignee>("AI");
   const [menu, setMenu] = useState<MenuPos | null>(null);
   const [assigneeMenu, setAssigneeMenu] = useState<MenuPos | null>(null);
@@ -126,7 +133,10 @@ export function QuickAdd() {
       </span>
     ),
     selected: p.id === current.id,
-    onSelect: () => setProjId(p.id),
+    onSelect: () => {
+      setProjId(p.id);
+      localStorage.setItem(LAST_PROJECT_KEY, p.id);
+    },
   }));
 
   const assigneeItems: MenuItem[] = ASSIGNEES.map((a) => ({
