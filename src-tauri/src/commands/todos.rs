@@ -82,8 +82,8 @@ pub fn update_todo(
 
     if let Some(old) = old {
         log_item_changes(
-            &conn, "Todo", &id, &old.status, &old.priority, &old.assignee, &status, &priority,
-            &assignee, &title, &description,
+            &conn, "Todo", &id, &old.status, &old.priority, &old.assignee, &old.title,
+            old.description.as_deref(), &status, &priority, &assignee, &title, &description,
         )
         .map_err(|e| e.to_string())?;
     }
@@ -123,6 +123,8 @@ pub(crate) fn log_item_changes(
     old_status: &str,
     old_priority: &str,
     old_assignee: &str,
+    old_title: &str,
+    old_description: Option<&str>,
     status: &Option<String>,
     priority: &Option<String>,
     assignee: &Option<String>,
@@ -154,7 +156,9 @@ pub(crate) fn log_item_changes(
             )?;
         }
     }
-    if title.is_some() || description.is_some() {
+    let title_changed = title.as_deref().map_or(false, |t| t != old_title);
+    let desc_changed = description.as_deref().map_or(false, |d| Some(d) != old_description);
+    if title_changed || desc_changed {
         schema::insert_activity(
             conn,
             &ActivityLog::new(item_type.into(), id.into(), "Updated".into(), Actor::User, None, title.clone()),
