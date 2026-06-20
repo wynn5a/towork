@@ -63,4 +63,10 @@ cd .worktrees/<branch>
 
 New worktrees branch from the current local `HEAD` (`worktree.baseRef: "head"`) and symlink `node_modules` (no reinstall needed). `src-tauri/target` is intentionally *not* symlinked, so each worktree gets its own Rust build dir and parallel `cargo` builds don't collide. Clean up a finished worktree with `git worktree remove .worktrees/<branch>`.
 
+**Never run `pnpm install` from a worktree — nor any pnpm command that auto-installs first (`pnpm build`, `pnpm tauri dev`, `pnpm dev`).** A worktree's `node_modules` is a *symlink* to the main checkout's, so pnpm follows it and rewrites **main's** shared store: it repoints `node_modules/.modules.yaml`'s `virtualStoreDir` at the worktree it ran from. When that worktree is later removed, main's top-level dep symlinks (`react`, `vite`, `typescript`, …) dangle and `tsc`/`vite` fail *everywhere* with "Cannot find module" even though the packages are still in the store. With several worktrees it cascades.
+
+- **Type-check / build a worktree's change via the binaries directly** — `node_modules/.bin/tsc --noEmit` and `node_modules/.bin/vite build`, never `pnpm build`. These only read `node_modules`; they never relink.
+- **Run `pnpm install` (and `pnpm tauri dev`) only from the main checkout.** Worktrees inherit deps through the symlink; they never need their own install.
+- **To repair a clobbered store:** from the main checkout run `pnpm install --config.confirmModulesPurge=false`, then confirm `node_modules/.modules.yaml` shows `virtualStoreDir: .pnpm` (local — not a `.worktrees/…` path).
+
 One-off edit in the main checkout: disable the hook from `/hooks`, or have the user override.
