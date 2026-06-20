@@ -92,7 +92,7 @@ export function Sidebar() {
             <Icon name="command" size={16} />
           </span>
           <span className="ni-label">Command</span>
-          <Kbd>⌘K</Kbd>
+          <Kbd keys={["⌘", "K"]} />
         </button>
       </div>
 

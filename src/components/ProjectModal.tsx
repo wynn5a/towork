@@ -118,7 +118,7 @@ export function ProjectModal({
           </button>
           <button className="btn-primary" disabled={!name.trim()} onClick={save}>
             {existing ? "Save" : "Create project"}
-            <Kbd dark>⌘↵</Kbd>
+            <Kbd keys={["⌘", "↵"]} size="sm" variant="inv" />
           </button>
         </div>
       </div>

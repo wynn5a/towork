@@ -267,7 +267,7 @@ export function ItemModal({
             )}
             <button className="btn-primary" disabled={!title.trim()} onClick={save}>
               {existing ? "Save changes" : isIssue ? "Create issue" : "Create todo"}
-              <Kbd dark>⌘↵</Kbd>
+              <Kbd keys={["⌘", "↵"]} size="sm" variant="inv" />
             </button>
           </div>
         </div>

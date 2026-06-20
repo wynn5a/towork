@@ -42,7 +42,7 @@ export function ConfirmDialog({
             Cancel
           </button>
           <button
-            className="btn-chip danger"
+            className="btn-danger"
             onClick={() => {
               onConfirm();
               onClose();

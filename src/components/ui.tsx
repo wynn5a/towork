@@ -81,8 +81,26 @@ export function Count({ children, accent }: { children: ReactNode; accent?: bool
 }
 
 /* --------------------------------- kbd -------------------------------- */
-export function Kbd({ children, dark }: { children: ReactNode; dark?: boolean }) {
-  return <span className={`kbd${dark ? " dark" : ""}`}>{children}</span>;
+/* One physical key per <kbd> cap. Pass a single key as a string, or a chord as
+ * an array (rendered as a row of caps inside .keys). `variant="inv"` is the
+ * white-on-color cap used on primary/danger buttons. */
+export function Kbd({
+  keys,
+  size,
+  variant,
+}: {
+  keys: string | string[];
+  size?: "sm" | "lg";
+  variant?: "ghost" | "inv";
+}) {
+  const arr = Array.isArray(keys) ? keys : [keys];
+  const cls = [size, variant].filter(Boolean).join(" ");
+  const caps = arr.map((k, i) => (
+    <kbd key={i} className={cls || undefined}>
+      {k}
+    </kbd>
+  ));
+  return arr.length > 1 ? <span className="keys">{caps}</span> : <>{caps}</>;
 }
 
 /* ------------------------------ icon button --------------------------- */

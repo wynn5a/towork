@@ -16,6 +16,23 @@ html, body {
 button { font-family: inherit; }
 ::selection { background: var(--accent-soft); }
 
+/* Linear-signature surface grain: one fixed viewport overlay that blends into
+   every surface. soft-light keeps it neutral (lightens highlights, deepens
+   shadows) rather than dusting white speckle, killing banding on the near-black
+   gradients and adding a faint tactile depth. pointer-events:none so it never
+   intercepts clicks; it sits above all chrome so the whole UI shares the finish. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 2147483646;
+  pointer-events: none;
+  opacity: var(--grain);
+  background-image: var(--grain-img);
+  background-size: 180px 180px;
+  mix-blend-mode: soft-light;
+}
+
 /* Keyboard-focus ring. Mouse clicks stay ringless (:focus-visible only fires
    for keyboard / programmatic focus). Text inputs keep their own bespoke ring
    via the wrapper `.focus` class + `.input:focus`, whose higher-specificity
@@ -41,21 +58,26 @@ button { font-family: inherit; }
 [data-density="comfortable"] { --d-scale: 1.18; }
 
 /* ----------------------------------------------------------------
-   Shell layout — the window uses the native OS title bar (no custom chrome).
+   Shell layout — front-to-back by lightness. The window frame is the darkest
+   level (--bg-base) and holds the sidebar flush against it; the working content
+   lifts a step lighter as a rounded panel inset from the frame by an even gap.
+   Closer = lighter. The window uses the native OS title bar (no custom chrome).
 ---------------------------------------------------------------- */
 .shell {
-  display: flex;
-  height: 100vh;
+  display: flex; gap: 8px;
+  height: 100vh; padding: 8px;
+  background: var(--bg-base);
 }
 
 /* ----------------------------------------------------------------
-   Sidebar
+   Sidebar — sits on the frame at the darkest level, no fill of its own. The
+   inset gap and the lighter content panel beside it do the separating, so the
+   old right divider is gone.
 ---------------------------------------------------------------- */
 .sidebar {
   width: var(--sidebar-w, 240px); flex-shrink: 0;
   display: flex; flex-direction: column;
-  background: var(--bg-panel);
-  border-right: 1px solid var(--border);
+  background: transparent;
 }
 .side-head {
   display: flex; align-items: center; gap: 10px;
@@ -156,7 +178,14 @@ button { font-family: inherit; }
 /* ----------------------------------------------------------------
    Main area
 ---------------------------------------------------------------- */
-.main { flex: 1; min-width: 0; display: flex; flex-direction: column; overflow: hidden; background: var(--bg-base); }
+/* The working content well — one step lighter than the frame, a rounded floating
+   panel with a hairline rim, a faint top sheen and a soft contact shadow. */
+.main {
+  flex: 1; min-width: 0; display: flex; flex-direction: column; overflow: hidden;
+  background: linear-gradient(180deg, rgba(255,255,255,0.018), transparent 30%), var(--bg-panel);
+  border: 1px solid var(--border); border-radius: 12px;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.3);
+}
 .main-scroll { flex: 1; overflow-y: auto; }
 .view-pad { max-width: 1080px; margin: 0 auto; padding: 18px 40px 60px; }
 
@@ -170,25 +199,43 @@ button { font-family: inherit; }
 /* ----------------------------------------------------------------
    Buttons (from DS)
 ---------------------------------------------------------------- */
+/* Buttons are a frosted-glass family: a translucent tinted fill, an even 1px
+   light-mixed rim, and a backdrop blur — so they read as glass over content, not
+   flat paint. Primary = accent, danger = red, secondary = neutral white glass.
+   The edge is uniform top-to-bottom (no top-lip highlight). */
 .btn-primary {
   display: inline-flex; align-items: center; gap: 7px; padding: 6px 13px; white-space: nowrap;
   border-radius: var(--radius-sm); font-size: 12.5px; font-weight: 500; color: #fff; cursor: pointer;
-  border: 1px solid color-mix(in srgb, var(--accent) 45%, rgba(0,0,0,0.28));
-  background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 96%, #fff), var(--accent));
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.14), 0 1px 2px rgba(0,0,0,0.35);
-  transition: filter var(--dur-2) var(--ease), transform var(--dur-1) var(--ease);
+  background: color-mix(in srgb, var(--accent) 85%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, rgba(255,255,255,0.28));
+  backdrop-filter: blur(12px) saturate(1.3); -webkit-backdrop-filter: blur(12px) saturate(1.3);
+  transition: background-color var(--dur-2) var(--ease), border-color var(--dur-2) var(--ease),
+    filter var(--dur-2) var(--ease), transform var(--dur-1) var(--ease);
 }
-.btn-primary:hover { filter: brightness(1.08); }
+.btn-primary:hover { background: var(--accent); border-color: color-mix(in srgb, var(--accent) 45%, rgba(255,255,255,0.4)); filter: brightness(1.13); }
 .btn-primary:active:not(:disabled):not(.disabled) { transform: translateY(0.5px) scale(0.985); }
 .btn-primary:disabled, .btn-primary.disabled { opacity: .4; cursor: not-allowed; filter: none; }
+.btn-danger {
+  display: inline-flex; align-items: center; gap: 7px; padding: 6px 13px; white-space: nowrap;
+  border-radius: var(--radius-sm); font-size: 12.5px; font-weight: 500; color: #fff; cursor: pointer;
+  background: color-mix(in srgb, var(--red) 85%, transparent);
+  border: 1px solid color-mix(in srgb, var(--red) 35%, rgba(255,255,255,0.28));
+  backdrop-filter: blur(12px) saturate(1.3); -webkit-backdrop-filter: blur(12px) saturate(1.3);
+  transition: background-color var(--dur-2) var(--ease), border-color var(--dur-2) var(--ease),
+    filter var(--dur-2) var(--ease), transform var(--dur-1) var(--ease);
+}
+.btn-danger:hover { background: var(--red); border-color: color-mix(in srgb, var(--red) 45%, rgba(255,255,255,0.4)); filter: brightness(1.13); }
+.btn-danger:active:not(:disabled):not(.disabled) { transform: translateY(0.5px) scale(0.985); }
+.btn-danger:disabled, .btn-danger.disabled { opacity: .4; cursor: not-allowed; filter: none; }
 .btn-secondary {
   display: inline-flex; align-items: center; gap: 7px; padding: 6px 13px; white-space: nowrap;
-  border-radius: var(--radius); border: none; background: var(--bg-control); color: var(--on-control);
-  font-size: 12.5px; font-weight: 500; cursor: pointer;
-  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.055), inset 0 1px 0 rgba(255,255,255,0.05), 0 1px 2px rgba(0,0,0,0.28);
-  transition: background-color .15s var(--ease), transform var(--dur-1) var(--ease);
+  border-radius: var(--radius-sm);
+  background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.10);
+  color: var(--on-control); font-size: 12.5px; font-weight: 500; cursor: pointer;
+  backdrop-filter: blur(12px) saturate(1.3); -webkit-backdrop-filter: blur(12px) saturate(1.3);
+  transition: background-color .15s var(--ease), border-color .15s var(--ease), transform var(--dur-1) var(--ease);
 }
-.btn-secondary:hover { background: var(--bg-control-hover); color: var(--text-1); }
+.btn-secondary:hover { background: rgba(255,255,255,0.15); border-color: rgba(255,255,255,0.22); color: var(--text-1); }
 .btn-secondary:active { transform: translateY(0.5px) scale(0.985); }
 .btn-chip {
   display: inline-flex; align-items: center; gap: 6px; padding: 5.5px 10px; white-space: nowrap;
@@ -229,15 +276,17 @@ button { font-family: inherit; }
    Project grid (home)
 ---------------------------------------------------------------- */
 .proj-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 14px; }
+/* Cards are floating chrome — they sit one level above the content panel on
+   --bg-elevated with a resting contact shadow, and lift further on hover. */
 .proj-card {
   border: 1px solid var(--border); border-radius: var(--radius);
-  background: var(--bg-panel);
+  background: var(--bg-elevated); box-shadow: var(--shadow-card);
   padding: calc(16px * var(--d-scale)) 16px;
   cursor: pointer; display: flex; flex-direction: column; gap: 12px;
   transition: border-color var(--dur-2) var(--ease), background-color var(--dur-2) var(--ease),
     transform var(--dur-3) var(--ease-out), box-shadow var(--dur-3) var(--ease-out);
 }
-.proj-card:hover { border-color: var(--border-strong); background: var(--bg-hover);
+.proj-card:hover { border-color: var(--border-strong);
   transform: translateY(-2px); box-shadow: var(--shadow-pop); }
 .proj-card:active { transform: translateY(-1px) scale(0.995); }
 .proj-card-head { display: flex; align-items: center; gap: 10px; }
@@ -549,7 +598,8 @@ button { font-family: inherit; }
 }
 .empty .em-ic {
   width: 52px; height: 52px; border-radius: 14px; display: grid; place-items: center;
-  background: var(--bg-panel); border: 1px solid var(--border); color: var(--text-4); margin-bottom: 14px;
+  background: var(--bg-elevated); border: 1px solid var(--border); color: var(--text-4); margin-bottom: 14px;
+  box-shadow: var(--shadow-card);
 }
 .empty h4 { margin: 0; font-size: 14px; font-weight: 600; color: var(--text-2); }
 .empty p { margin: 0 0 16px; font-size: 12.5px; color: var(--text-4); max-width: 38ch; line-height: 1.55; }
@@ -584,10 +634,14 @@ button { font-family: inherit; }
 }
 .overlay.open { display: flex; animation: ov-fade var(--dur-3) var(--ease-out); }
 @keyframes ov-fade { from { opacity: 0; } to { opacity: 1; } }
+/* All floating overlays — dialog, palette, context menu, toast — share one
+   frosted-glass fill so the layer reads as a single material: the dimmed page
+   frosts through a translucent --bg-elevated plus a heavy backdrop blur. */
 .dialog {
   width: 480px; max-width: 92vw; max-height: 84vh; border-radius: 14px; overflow: hidden;
   display: flex; flex-direction: column;
-  background: linear-gradient(180deg, rgba(255,255,255,0.022), transparent 22%), var(--bg-elevated);
+  background: color-mix(in srgb, var(--bg-elevated) 78%, transparent);
+  backdrop-filter: blur(30px) saturate(1.4); -webkit-backdrop-filter: blur(30px) saturate(1.4);
   border: 1px solid var(--border-strong); box-shadow: var(--shadow-pop);
   animation: dlg-rise var(--dur-4) var(--ease-out);
 }
@@ -600,7 +654,7 @@ button { font-family: inherit; }
 .dlg-sub { font-size: 11.5px; color: var(--text-3); margin-top: 2px; line-height: 1.45; }
 .dlg-body { padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 15px; }
 .dlg-foot { display: flex; align-items: center; gap: 10px; justify-content: flex-end; padding: 13px 16px;
-  border-top: 1px solid var(--border); background: var(--bg-base); }
+  border-top: 1px solid var(--border); background: rgba(0,0,0,0.12); }
 .dlg-foot .ff-left { margin-right: auto; }
 
 /* form fields */
@@ -726,7 +780,8 @@ textarea.input { resize: vertical; min-height: 64px; line-height: 1.55; }
 .palette-overlay.open { display: flex; animation: ov-fade var(--dur-3) var(--ease-out); }
 .palette {
   width: 560px; max-width: 92vw; overflow: hidden; border-radius: 12px;
-  background: linear-gradient(180deg, rgba(255,255,255,0.02), transparent 36%), var(--bg-elevated);
+  background: color-mix(in srgb, var(--bg-elevated) 78%, transparent);
+  backdrop-filter: blur(30px) saturate(1.4); -webkit-backdrop-filter: blur(30px) saturate(1.4);
   border: 1px solid var(--border-strong); box-shadow: var(--shadow-pop);
   animation: dlg-rise var(--dur-4) var(--ease-out);
 }
@@ -742,10 +797,11 @@ textarea.input { resize: vertical; min-height: 64px; line-height: 1.55; }
 .palette .pitem .pi-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .palette .pitem .pi-sub { font-family: var(--mono); font-size: 11px; color: var(--text-4); }
 
-/* overflow menu */
+/* overflow / context menu */
 .menu {
   position: fixed; z-index: 130; width: 188px; padding: 5px; border-radius: 10px; display: none;
-  background: linear-gradient(180deg, rgba(255,255,255,0.02), transparent 36%), var(--bg-elevated);
+  background: color-mix(in srgb, var(--bg-elevated) 78%, transparent);
+  backdrop-filter: blur(30px) saturate(1.4); -webkit-backdrop-filter: blur(30px) saturate(1.4);
   border: 1px solid var(--border-strong); box-shadow: var(--shadow-pop);
 }
 .menu.open { display: block; animation: dlg-rise var(--dur-3) var(--ease-out); }
@@ -772,7 +828,8 @@ textarea.input { resize: vertical; min-height: 64px; line-height: 1.55; }
 .toast-wrap { position: fixed; right: 18px; bottom: 18px; z-index: 140; display: flex; flex-direction: column; gap: 10px; }
 .toast {
   display: flex; align-items: flex-start; gap: 11px; width: 320px; padding: 12px 13px; border-radius: 10px;
-  background: linear-gradient(180deg, rgba(255,255,255,0.02), transparent 40%), var(--bg-elevated);
+  background: color-mix(in srgb, var(--bg-elevated) 80%, transparent);
+  backdrop-filter: blur(30px) saturate(1.4); -webkit-backdrop-filter: blur(30px) saturate(1.4);
   border: 1px solid var(--border-strong); box-shadow: var(--shadow-pop); font-size: 12.5px;
   animation: toast-in var(--dur-4) var(--ease-out);
 }

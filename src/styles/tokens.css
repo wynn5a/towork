@@ -75,6 +75,14 @@
   --shadow-raise: inset 0 1px 0 rgba(255,255,255,0.07), 0 1px 2px rgba(0,0,0,0.25);
   --sheen:        inset 0 1px 0 rgba(255,255,255,0.07);
 
+  /* ---- surface grain (Linear-signature dark-UI texture) ----
+     A near-invisible fractal-noise layer over the whole viewport. It kills the
+     colour banding that flat near-black + soft gradients show on wide-gamut
+     displays, and lends a faint tactile grain that reads as depth. Applied once
+     on the app body via body::before; opacity is tweakable 0–0.06. */
+  --grain: 0.04;
+  --grain-img: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.82' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E");
+
   /* ---- motion: duration scale (fast & layered, Linear-lineage) ---- */
   --dur-1: 80ms;    /* instant — hover tint, press, tiny state flips */
   --dur-2: 120ms;   /* fast — default control transition (== --speed) */
@@ -152,6 +160,29 @@ body.ds {
 }
 
 /* ---------- shared component recreations ---------- */
+/* Canonical raised keycap — one physical key per element; sequence them inside
+   .keys. UI font, 20px tall, hairline rim on --bg-elevated with a top sheen and
+   a 1px bottom shadow so it reads pressable. */
+kbd, .keycap {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 20px; height: 20px; padding: 0 6px; box-sizing: border-box;
+  font-family: var(--font); font-size: 11.5px; font-weight: 500; font-style: normal;
+  color: var(--text-2); line-height: 1; white-space: nowrap;
+  background: var(--bg-elevated); border: 1px solid var(--border);
+  border-radius: 5px; box-shadow: var(--sheen), 0 1px 0 rgba(0,0,0,0.4);
+}
+kbd.sm, .keycap.sm { min-width: 16px; height: 16px; padding: 0 4px; font-size: 10px; border-radius: 4px; }
+kbd.lg, .keycap.lg { min-width: 26px; height: 26px; padding: 0 9px; font-size: 13px; border-radius: 6px; }
+kbd.ghost, .keycap.ghost { background: transparent; box-shadow: none; color: var(--text-3); }
+kbd.inv, .keycap.inv { background: rgba(0,0,0,0.22); color: #fff; border-color: rgba(255,255,255,0.18); box-shadow: none; }
+.keys { display: inline-flex; align-items: center; gap: 2px; vertical-align: middle; }
+.keys .ksep { color: var(--text-4); font-size: 10.5px; padding: 0 1px; user-select: none; }
+/* on a colored button the gap shows the button color — tighten the chord so it reads as one unit */
+.btn-primary .keys, .btn-danger .keys, .btn-secondary .keys { gap: 1px; }
+.btn-primary .keys kbd.sm, .btn-danger .keys kbd.sm, .btn-secondary .keys kbd.sm { padding: 0 3px; min-width: 15px; }
+
+/* Legacy mono chip — kept for the most compact single-glyph hints in dense
+   palette/trigger rows. New chrome should prefer <kbd>. */
 .kbd {
   font-family: var(--mono); font-size: 10.5px;
   padding: 1.5px 5px; border-radius: 4px;

@@ -135,7 +135,7 @@ export function CommandPalette({ onClose }: { onClose: () => void }) {
               setActive(0);
             }}
           />
-          <Kbd>esc</Kbd>
+          <Kbd keys="esc" />
         </div>
         <div className="pbody" ref={bodyRef}>
           {filtered.length === 0 && <div className="pgroup">No results</div>}
@@ -155,7 +155,7 @@ export function CommandPalette({ onClose }: { onClose: () => void }) {
                   </span>
                   <span className="pi-label">{a.label}</span>
                   {a.sub && <span className="pi-sub">{a.sub}</span>}
-                  {i === active && <Kbd>↵</Kbd>}
+                  {i === active && <Kbd keys="↵" variant="ghost" />}
                 </div>
               </div>
             );
