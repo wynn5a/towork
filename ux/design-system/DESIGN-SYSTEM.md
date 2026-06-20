@@ -9,6 +9,8 @@
 
 A dense, calm, keyboard-first **dark** interface in the Linear lineage, built for a database client.
 - Hierarchy comes from **elevation** (5 stacked near-black surfaces) and a 4-step text ramp — never from heavy borders or big type.
+- **The interface reads front-to-back by lightness.** The app frame holds the sidebar at the darkest level (`--bg-base`); the working content sits a step lighter as a rounded panel inset from the frame (`--bg-panel`); floating chrome — header bars, toolbars, cards — lifts lighter still (`--bg-elevated`) with a soft contact shadow. Closer = lighter.
+- A near-invisible **grain** layer sits over the whole viewport — it kills colour banding on the dark gradients and lends a faint tactile depth (the Linear-signature finish).
 - **Color means something.** UI is neutral by default; the indigo accent marks primary actions, selection and focus; semantic hues signal state; each data type owns a fixed hue reused everywhere.
 - **Two typefaces, strict split:** Inter for interface chrome, IBM Plex Mono for anything machine-shaped (values, types, ids, keys, code).
 - Chrome recedes; data is the loudest thing on screen.
@@ -24,8 +26,10 @@ A dense, calm, keyboard-first **dark** interface in the Linear lineage, built fo
 ```css
 :root {
   /* surfaces — darkest → most elevated. Linear-exact neutral near-black.
-     Page sits on base; panels/cards on panel; menus, popovers, hovering chrome
-     and selected chips on elevated; text fields on input. */
+     The interface reads front-to-back by lightness: the app frame + sidebar sit
+     darkest on base; the working content area is a step lighter (panel), inset as
+     a rounded floating well; menus, popovers, header bars and other floating
+     chrome lift lighter still on elevated; text fields on input. Closer = lighter. */
   --bg-base:      #08090a;
   --bg-canvas:    #0b0c0e;   /* content wells, table headers, code blocks */
   --bg-panel:     #0f1011;   /* cards, sidebar, panels */
@@ -87,6 +91,11 @@ A dense, calm, keyboard-first **dark** interface in the Linear lineage, built fo
   --shadow-raise: inset 0 1px 0 rgba(255,255,255,0.07), 0 1px 2px rgba(0,0,0,0.25);  /* signature raised chip: selected tabs, segmented, secondary buttons, active nav */
   --sheen:        inset 0 1px 0 rgba(255,255,255,0.07);  /* top highlight on raised elements */
 
+  /* surface grain — near-invisible fractal noise over the whole viewport
+     (body.ds::before, soft-light). Kills banding on near-black + soft
+     gradients and adds faint tactile depth. Tweakable 0–0.06. */
+  --grain: 0.04;
+
   /* motion — durations (fast & layered) */
   --dur-1: 80ms;    /* hover tint, press, tiny flips */
   --dur-2: 120ms;   /* default control transition (== --speed) */
@@ -137,31 +146,31 @@ topbar 44px · toolbar 38px · row 34px (30/42 density variants) · sidebar 256p
 ### Primary button
 ```css
 .btn-primary {
-  display: inline-flex; align-items: center; gap: 7px; padding: 5px 12px;
+  display: inline-flex; align-items: center; gap: 7px; padding: 6px 13px;
   border-radius: var(--radius-sm); font-size: 12.5px; font-weight: 500; color: #fff;
-  border: 1px solid color-mix(in srgb, var(--accent) 45%, rgba(0,0,0,0.28));
-  background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 96%, #fff), var(--accent));
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.14), 0 1px 2px rgba(0,0,0,0.35);
-  transition: filter var(--speed) var(--ease);
+  background: color-mix(in srgb, var(--accent) 85%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, rgba(255,255,255,0.28));
+  backdrop-filter: blur(12px) saturate(1.3);
+  transition: background-color var(--speed) var(--ease), filter var(--speed) var(--ease);
 }
-.btn-primary:hover { filter: brightness(1.08); }
+.btn-primary:hover { background: var(--accent); border-color: color-mix(in srgb, var(--accent) 45%, rgba(255,255,255,0.4)); filter: brightness(1.13); }
 ```
-Linear's primary is near-flat indigo: a faint top-to-bottom darken, a crisp top sheen, a 1px contact shadow — not a heavy gradient.
+Buttons are a **frosted-glass family**: a translucent tinted fill (accent at 85%), an even 1px light-mixed rim, and a backdrop blur — so they read as glass over content, not flat paint. The edge is uniform top-to-bottom (no top-lip highlight). `.btn-danger` is the identical recipe with `--red`; `.btn-secondary` is the neutral glass below. All share 6×13px padding and `--radius-sm`.
 
 ### Secondary / neutral button (Linear's default submit button)
 ```css
 .btn-secondary {
   display: inline-flex; align-items: center; gap: 7px; padding: 6px 13px;
-  border-radius: var(--radius); border: none;
-  background: var(--bg-control); color: var(--on-control);
-  font-size: 12.5px; font-weight: 500;
-  /* crisp 1px inset ring (sharp at any DPR) + brighter top highlight + soft contact */
-  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.055), inset 0 1px 0 rgba(255,255,255,0.05), 0 1px 2px rgba(0,0,0,0.28);
-  transition: background-color .15s var(--ease);
+  border-radius: var(--radius-sm);
+  background: rgba(255,255,255,0.07);
+  border: 1px solid rgba(255,255,255,0.10);
+  color: var(--on-control); font-size: 12.5px; font-weight: 500;
+  backdrop-filter: blur(12px) saturate(1.3);
+  transition: background-color .15s var(--ease), border-color .15s var(--ease);
 }
-.btn-secondary:hover { background: var(--bg-control-hover); color: var(--text-1); }
+.btn-secondary:hover { background: rgba(255,255,255,0.15); border-color: rgba(255,255,255,0.22); color: var(--text-1); }
 ```
-This is the neutral elevated button Linear uses for most actions (e.g. **Comment**). Fill `#2c2d2e` with a defined lighter top edge — the ring is drawn with an inset box-shadow rather than a 0.5px border so the top highlight stays crisp instead of under-rendering at sub-pixel widths.
+The neutral member of the glass family — a translucent white fill instead of an opaque control grey, so it matches primary/danger's frosted feel. Used for the next-most-likely action (e.g. **Comment**, **Save changes**).
 
 ### Secondary "chip" button
 ```css
@@ -199,7 +208,19 @@ The page itself stays flat — only overlays get `--shadow-pop`.
 ```
 The selected row reads as a faintly raised chip — elevated fill, hairline border (via inset ring, no layout shift), top sheen and a soft contact shadow. Selected tabs, segmented-control segments and secondary buttons all share this `--shadow-raise` treatment.
 
-### Kbd hint
+### Keycap (`<kbd>`) & kbd hint
+**One physical key per `<kbd>`.** A shortcut is a row of keycaps wrapped in `.keys` — never glue a chord into one pill. `⌘R` is `<kbd>⌘</kbd><kbd>R</kbd>`, not `<kbd>⌘R</kbd>`.
+```css
+kbd, .keycap {            /* canonical raised keycap — UI font, 20px tall */
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 20px; height: 20px; padding: 0 6px; font-family: var(--font);
+  font-size: 11.5px; font-weight: 500; color: var(--text-2);
+  background: var(--bg-elevated); border: 1px solid var(--border);
+  border-radius: 5px; box-shadow: var(--sheen), 0 1px 0 rgba(0,0,0,0.4); }
+.keys { display: inline-flex; align-items: center; gap: 4px; }  /* a chord */
+/* variants: .sm  .lg  .ghost  .inv (white-on-color, for primary/danger buttons) */
+```
+The legacy `.kbd` mono chip remains for the most compact single-glyph hints in dense palette/trigger rows; new chrome should prefer `<kbd>`.
 ```css
 .kbd { font-family: var(--mono); font-size: 10.5px; padding: 1.5px 5px; border-radius: 4px;
   background: var(--bg-elevated); border: 1px solid var(--border); color: var(--text-2);
@@ -235,7 +256,7 @@ Trackless: the strip has no container fill. Each option is a pill (`--radius-pil
 - Hover row: `--bg-hover`. Selected row: `--accent-soft` fill.
 
 ### Command palette (⌘K)
-560px wide, `--bg-elevated` + faint top sheen gradient, 12px radius, `--border-strong`, `--shadow-pop`. Search row 14px with trailing `esc` kbd. Group labels: mono 10.5px/600 caps `--text-4`. Items 13.5px, 7px radius; active item `--accent-soft` fill + `--text-1` + accent icon.
+560px wide, frosted glass (`color-mix(var(--bg-elevated) 78%, transparent)` + `backdrop-filter: blur(30px) saturate(1.4)`), 12px radius, `--border-strong`, `--shadow-pop`. Search row 14px with trailing `esc` kbd. Group labels: mono 10.5px/600 caps `--text-4`. Items 13.5px, 7px radius; active item `--accent-soft` fill + `--text-1` + accent icon. All floating overlays — palette, dialog, context menu, select popover, toast — share this frosted-glass fill so the layer reads as one material.
 
 ### Status dot — 7px filled dot + `box-shadow: 0 0 0 3px <hue at 13%>` halo; green pulse = live connection.
 

@@ -118,5 +118,20 @@
       <p>--shadow-pop · 1px dark edge + 0 12px 32px black/60 + 0 4px 10px black/45</p>
     </div>
   </div>
+
+  <div class="ds-section-label">Surface grain</div>
+  <p class="ds-sub" style="margin-top:-4px;">A near-invisible fractal-noise layer sits over the whole viewport (<span class="mono" style="color:var(--text-2)">body.ds::before</span>, <span class="mono" style="color:var(--text-2)">soft-light</span>, <span class="mono" style="color:var(--text-2)">--grain</span> opacity). It breaks the colour banding that flat near-black and soft gradients reveal on wide-gamut screens, and adds a faint tactile depth. Tweakable 0–0.06; the swatch on the right runs it at 8× to make the texture legible.</p>
+  <div class="row" style="margin-top:0;">
+    <div>
+      <div style="height:120px;border:1px solid var(--border);border-radius:var(--radius);background:linear-gradient(120deg, var(--accent-soft), var(--bg-canvas) 70%);position:relative;overflow:hidden;display:grid;place-items:end start;">
+        <span style="font-family:var(--mono);font-size:10.5px;color:var(--text-3);padding:10px 12px;">--grain · 0.04 (default, in situ)</span>
+      </div>
+    </div>
+    <div>
+      <div style="height:120px;border:1px solid var(--border);border-radius:var(--radius);background-color:var(--bg-canvas);background-image:var(--grain-img);background-size:180px 180px;opacity:1;position:relative;overflow:hidden;display:grid;place-items:end start;">
+        <span style="font-family:var(--mono);font-size:10.5px;color:var(--text-3);padding:10px 12px;background:rgba(0,0,0,0.4);border-radius:4px;margin:8px;">grain texture · exaggerated 8×</span>
+      </div>
+    </div>
+  </div>
 </body>
 </html>

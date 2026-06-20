@@ -23,15 +23,15 @@
 
   /* ---- buttons ---- */
   .btn-primary {
-    display:inline-flex; align-items:center; gap:7px; padding:5px 12px; white-space:nowrap;
+    display:inline-flex; align-items:center; gap:7px; padding:6px 13px; white-space:nowrap;
     border-radius: var(--radius-sm);
-    border:1px solid color-mix(in srgb, var(--accent) 45%, rgba(0,0,0,0.28));
-    background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 96%, #fff), var(--accent));
-    box-shadow: inset 0 1px 0 rgba(255,255,255,0.14), 0 1px 2px rgba(0,0,0,0.35);
     color:#fff; font-size:12.5px; font-weight:500; font-family:var(--font); cursor:pointer;
-    transition: filter var(--speed) var(--ease);
+    background: color-mix(in srgb, var(--accent) 85%, transparent);
+    border:1px solid color-mix(in srgb, var(--accent) 35%, rgba(255,255,255,0.28));
+    backdrop-filter: blur(12px) saturate(1.3); -webkit-backdrop-filter: blur(12px) saturate(1.3);
+    transition: background-color var(--speed) var(--ease), filter var(--speed) var(--ease);
   }
-  .btn-primary:hover { filter: brightness(1.08); }
+  .btn-primary:hover { background: var(--accent); border-color: color-mix(in srgb, var(--accent) 45%, rgba(255,255,255,0.4)); filter: brightness(1.13); }
   .btn-chip {
     display:inline-flex; align-items:center; gap:6px; padding:5.5px 10px; white-space:nowrap;
     border-radius: var(--radius-sm); border:var(--hairline) solid var(--border); background:transparent;
@@ -125,7 +125,8 @@
   /* command palette */
   .palette {
     width:100%; max-width:440px;
-    background: linear-gradient(180deg, rgba(255,255,255,0.02), transparent 36%), var(--bg-elevated);
+    background: color-mix(in srgb, var(--bg-elevated) 78%, transparent);
+    backdrop-filter: blur(30px) saturate(1.4); -webkit-backdrop-filter: blur(30px) saturate(1.4);
     border:1px solid var(--border-strong); border-radius:12px;
     box-shadow: var(--shadow-pop); overflow:hidden;
   }
@@ -216,7 +217,8 @@
   .sel-trigger.open { box-shadow:0 0 0 1px var(--accent-line); }
   .sel-pop {
     width:100%; padding:5px; border-radius:10px;
-    background: linear-gradient(180deg, rgba(255,255,255,0.02), transparent 38%), var(--bg-elevated);
+    background: color-mix(in srgb, var(--bg-elevated) 78%, transparent);
+    backdrop-filter: blur(30px) saturate(1.4); -webkit-backdrop-filter: blur(30px) saturate(1.4);
     border:1px solid var(--border-strong); box-shadow:var(--shadow-pop);
   }
   .sel-opt { display:flex; align-items:center; gap:9px; padding:7px 9px; border-radius:6px; font-size:12.5px; color:var(--text-2); }
@@ -254,7 +256,8 @@
 
   /* ---- context menu ---- */
   .menu { width:210px; padding:5px; border-radius:10px;
-    background: linear-gradient(180deg, rgba(255,255,255,0.02), transparent 36%), var(--bg-elevated);
+    background: color-mix(in srgb, var(--bg-elevated) 78%, transparent);
+    backdrop-filter: blur(30px) saturate(1.4); -webkit-backdrop-filter: blur(30px) saturate(1.4);
     border:1px solid var(--border-strong); box-shadow:var(--shadow-pop); }
   .mi { display:flex; align-items:center; gap:10px; padding:7px 9px; border-radius:6px; font-size:12.5px; color:var(--text-2); }
   .mi.active { background:var(--bg-hover); color:var(--text-1); }
@@ -270,7 +273,8 @@
 
   /* ---- toast ---- */
   .toast { display:flex; align-items:flex-start; gap:11px; width:340px; padding:12px 13px; border-radius:10px;
-    background: linear-gradient(180deg, rgba(255,255,255,0.02), transparent 40%), var(--bg-elevated);
+    background: color-mix(in srgb, var(--bg-elevated) 80%, transparent);
+    backdrop-filter: blur(30px) saturate(1.4); -webkit-backdrop-filter: blur(30px) saturate(1.4);
     border:1px solid var(--border-strong); box-shadow:var(--shadow-pop); font-size:12.5px; }
   .toast .tic { display:grid; place-items:center; width:26px; height:26px; border-radius:7px; flex-shrink:0; }
   .toast b { font-weight:600; color:var(--text-1); }
@@ -278,7 +282,8 @@
 
   /* ---- dialog ---- */
   .dialog { width:100%; max-width:460px; border-radius:14px; overflow:hidden;
-    background: linear-gradient(180deg, rgba(255,255,255,0.022), transparent 22%), var(--bg-elevated);
+    background: color-mix(in srgb, var(--bg-elevated) 78%, transparent);
+    backdrop-filter: blur(30px) saturate(1.4); -webkit-backdrop-filter: blur(30px) saturate(1.4);
     border:1px solid var(--border-strong); box-shadow:var(--shadow-pop); }
   .dlg-head { display:flex; align-items:flex-start; gap:12px; padding:15px 16px; border-bottom:1px solid var(--border); }
   .dlg-ic { display:grid; place-items:center; width:30px; height:30px; border-radius:8px; flex-shrink:0; }
@@ -286,26 +291,29 @@
   .dlg-sub { font-size:11.5px; color:var(--text-3); margin-top:2px; line-height:1.45; }
   .dlg-body { padding:15px 16px; }
   .codeblock { font-family:var(--mono); font-size:12px; padding:11px 13px; border-radius:8px;
-    background:var(--bg-canvas); border:1px solid var(--border); color:var(--text-2); line-height:1.5; }
-  .dlg-foot { display:flex; align-items:center; gap:10px; justify-content:flex-end; padding:13px 16px; border-top:1px solid var(--border); background:var(--bg-base); }
+    background:rgba(0,0,0,0.18); border:1px solid var(--border); color:var(--text-2); line-height:1.5; }
+  .dlg-foot { display:flex; align-items:center; gap:10px; justify-content:flex-end; padding:13px 16px; border-top:1px solid var(--border); background:rgba(0,0,0,0.12); }
   .btn-danger {
-    display:inline-flex; align-items:center; gap:7px; padding:6px 14px; white-space:nowrap;
+    display:inline-flex; align-items:center; gap:7px; padding:6px 13px; white-space:nowrap;
     border-radius:var(--radius-sm); color:#fff; font-size:12.5px; font-weight:500; font-family:var(--font); cursor:pointer;
-    border:1px solid color-mix(in srgb, var(--red) 55%, rgba(255,255,255,0.18));
-    background: linear-gradient(180deg, color-mix(in srgb, var(--red) 94%, #fff), color-mix(in srgb, var(--red) 90%, #000));
-    box-shadow:var(--sheen), 0 1px 2px rgba(0,0,0,0.35);
+    background: color-mix(in srgb, var(--red) 85%, transparent);
+    border:1px solid color-mix(in srgb, var(--red) 35%, rgba(255,255,255,0.28));
+    backdrop-filter: blur(12px) saturate(1.3); -webkit-backdrop-filter: blur(12px) saturate(1.3);
+    transition: background-color var(--speed) var(--ease), filter var(--speed) var(--ease);
   }
+  .btn-danger:hover { background: var(--red); border-color: color-mix(in srgb, var(--red) 45%, rgba(255,255,255,0.4)); filter: brightness(1.13); }
 
   /* ---- button hierarchy ---- */
   .btn-secondary {
     display:inline-flex; align-items:center; gap:7px; padding:6px 13px; white-space:nowrap;
-    border-radius:var(--radius); border:none;
-    background:var(--bg-control);
+    border-radius:var(--radius-sm);
+    background: rgba(255,255,255,0.07);
+    border:1px solid rgba(255,255,255,0.10);
     color:var(--on-control); font-size:12.5px; font-weight:500; font-family:var(--font); cursor:pointer;
-    box-shadow: inset 0 0 0 1px rgba(255,255,255,0.055), inset 0 1px 0 rgba(255,255,255,0.05), 0 1px 2px rgba(0,0,0,0.28);
-    transition: background-color .15s var(--ease);
+    backdrop-filter: blur(12px) saturate(1.3); -webkit-backdrop-filter: blur(12px) saturate(1.3);
+    transition: background-color .15s var(--ease), border-color .15s var(--ease);
   }
-  .btn-secondary:hover { background:var(--bg-control-hover); color:var(--text-1); }
+  .btn-secondary:hover { background:rgba(255,255,255,0.15); border-color:rgba(255,255,255,0.22); color:var(--text-1); }
   .btn-ghost {
     display:inline-flex; align-items:center; gap:7px; padding:5.5px 11px; white-space:nowrap;
     border-radius:var(--radius-sm); border:1px solid transparent; background:transparent;
@@ -421,6 +429,58 @@
   .tchildren.open { display:block; }
   .tindent { padding-left:22px; }
   .tindent2 { padding-left:40px; }
+
+  /* ---- workspace layering (frame → content → floating) ---- */
+  .shell {
+    display:flex; gap:8px; width:100%; height:300px; padding:8px;
+    background:var(--bg-base); border:1px solid var(--border); border-radius:var(--radius);
+    overflow:hidden;
+  }
+  .shell-side { width:198px; flex-shrink:0; display:flex; flex-direction:column; gap:2px; padding:4px 2px; }
+  .shell-ws { display:flex; align-items:center; gap:9px; padding:5px 8px; margin-bottom:8px; }
+  .shell-ws .wsmark {
+    width:24px; height:24px; border-radius:7px; display:grid; place-items:center; flex-shrink:0;
+    background:linear-gradient(180deg, color-mix(in srgb, var(--accent) 92%, #fff), color-mix(in srgb, var(--accent) 88%, #000));
+    border:1px solid rgba(255,255,255,0.14); box-shadow:var(--sheen);
+  }
+  .shell-ws .wsn { font-size:12.5px; font-weight:600; color:var(--text-1); line-height:1.2; white-space:nowrap; }
+  .shell-ws .wss { font-family:var(--mono); font-size:10px; color:var(--text-3); }
+  .shell-nav { display:flex; align-items:center; gap:9px; padding:6px 9px; border-radius:var(--radius-sm); font-size:12.5px; color:var(--text-2); }
+  .shell-nav .scount { margin-left:auto; font-family:var(--mono); font-size:10px; color:var(--text-4); font-variant-numeric:tabular-nums; }
+  .shell-nav.active { background:var(--bg-elevated); color:var(--text-1); font-weight:500; box-shadow:var(--shadow-raise), inset 0 0 0 1px var(--border); }
+  .shell-lbl { font-family:var(--mono); font-size:9.5px; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; color:var(--text-4); padding:13px 9px 5px; }
+
+  .shell-main {
+    flex:1; min-width:0; border-radius:10px; overflow:hidden; display:flex; flex-direction:column;
+    background:linear-gradient(180deg, rgba(255,255,255,0.018), transparent 30%), var(--bg-panel);
+    border:1px solid var(--border); box-shadow:0 1px 2px rgba(0,0,0,0.3);
+  }
+  .shell-bar {
+    margin:10px 10px 4px; padding:9px 11px; border-radius:9px; display:flex; align-items:center; gap:11px;
+    background:var(--bg-elevated);
+    border:1px solid var(--border-strong);
+    box-shadow:0 1px 3px rgba(0,0,0,0.35), 0 12px 28px -10px rgba(0,0,0,0.6);
+  }
+  .shell-body { flex:1; padding:12px 18px 18px; display:flex; flex-direction:column; gap:12px; }
+  .shell-row { height:8px; border-radius:99px; background:var(--bg-active); }
+
+  .depth-key { display:inline-flex; align-items:center; gap:8px; padding:5px 11px 5px 6px; border:1px solid var(--border); border-radius:var(--radius-pill); white-space:nowrap; }
+  .depth-key > i { width:24px; height:15px; border-radius:4px; border:1px solid var(--border); display:block; flex-shrink:0; }
+
+  /* ---- kbd guide ---- */
+  .kbd-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(118px,1fr)); gap:9px; width:100%; }
+  .kbd-cell { display:flex; flex-direction:column; gap:8px; align-items:flex-start; padding:11px 12px; border:1px solid var(--border); border-radius:var(--radius-sm); background:var(--bg-canvas); }
+  .kbd-cap { font-family:var(--mono); font-size:10px; color:var(--text-4); line-height:1.4; }
+  .kbd-cap b { display:block; color:var(--text-2); font-weight:500; }
+  .kbd-do2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; width:100%; }
+  .kbd-judge { border:1px solid var(--border); border-radius:var(--radius-sm); padding:13px 14px; background:var(--bg-canvas); }
+  .kbd-judge .jh { display:flex; align-items:center; gap:7px; font-size:11px; font-weight:600; letter-spacing:0.04em; text-transform:uppercase; margin-bottom:11px; font-family:var(--mono); }
+  .kbd-judge.do .jh { color:var(--green); }
+  .kbd-judge.dont .jh { color:var(--red); }
+  .kbd-judge .jrow { display:flex; align-items:center; gap:10px; margin-top:9px; }
+  .kbd-judge .jrow:first-of-type { margin-top:0; }
+  .kbd-judge .jcode { font-family:var(--mono); font-size:10.5px; color:var(--text-4); }
+  .kbd-bad { background:transparent !important; box-shadow:none !important; border-color:color-mix(in srgb, var(--red) 32%, transparent) !important; color:var(--text-3) !important; }
 </style>
 </head>
 <body class="ds">
@@ -429,6 +489,47 @@
   <p class="ds-sub">The working vocabulary. Borderless surfaces, hairline dividers, and one accent for primary actions and focus. Hover lifts the background by a hair; active state fills it slightly more. Icons are 1.5px line icons sized 11–17px.</p>
 
   <div class="grid2">
+
+    <div class="spec wide">
+      <h3>Workspace layering</h3>
+      <p>The whole interface reads front-to-back by lightness. A near-black <b style="color:var(--text-2);font-weight:500;">frame</b> holds the sidebar at the darkest level; the working <b style="color:var(--text-2);font-weight:500;">content</b> sits a step lighter as a rounded panel inset from the frame; and <b style="color:var(--text-2);font-weight:500;">floating</b> chrome — a header bar, a toolbar, a card — lifts lighter still with a soft contact shadow. Depth is read from elevation and a hair of shadow, never from heavier borders.</p>
+      <div class="demo" style="padding:0;background:transparent;border:none;">
+        <div class="shell">
+          <aside class="shell-side">
+            <div class="shell-ws">
+              <span class="wsmark"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5"/></svg></span>
+              <div style="min-width:0;"><div class="wsn">Data Buddy</div><div class="wss">production</div></div>
+            </div>
+            <div class="shell-nav active"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18"/></svg>Tables<span class="scount">24</span></div>
+            <div class="shell-nav"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-3)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m8 9 3 3-3 3M13 15h3"/><rect x="3" y="4" width="18" height="16" rx="2"/></svg>Query editor</div>
+            <div class="shell-nav"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-3)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><path d="M10 6.5h4a3 3 0 0 1 3 3V14"/></svg>Schema</div>
+            <div class="shell-lbl">Saved</div>
+            <div class="shell-nav"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-3)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Active users</div>
+            <div class="shell-nav"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-3)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18M7 14l3-4 3 3 4-6"/></svg>MRR by plan</div>
+          </aside>
+          <main class="shell-main">
+            <div class="shell-bar">
+              <span class="avatar" style="background:color-mix(in srgb, var(--t-json) 28%, var(--bg-elevated));color:var(--t-json);">XF</span>
+              <div style="flex:1;min-width:0;"><div style="font-size:13px;font-weight:600;color:var(--text-1);line-height:1.25;">Xiaoming Fu</div><div style="font-size:11px;color:var(--text-3);">edited customers · 2m ago</div></div>
+              <button class="btn-chip sm">Open</button>
+              <button class="btn-primary sm">Run<span class="keys"><kbd class="inv sm">⌘</kbd><kbd class="inv sm">↵</kbd></span></button>
+            </div>
+            <div class="shell-body">
+              <div class="shell-row" style="width:34%;"></div>
+              <div class="shell-row" style="width:74%;"></div>
+              <div class="shell-row" style="width:58%;"></div>
+              <div class="shell-row" style="width:81%;"></div>
+              <div class="shell-row" style="width:46%;"></div>
+            </div>
+          </main>
+        </div>
+      </div>
+      <div style="display:flex;gap:9px;flex-wrap:wrap;margin-top:14px;">
+        <span class="depth-key mono"><i style="background:var(--bg-base);"></i>frame · sidebar — --bg-base</span>
+        <span class="depth-key mono"><i style="background:var(--bg-panel);"></i>content — --bg-panel</span>
+        <span class="depth-key mono"><i style="background:var(--bg-elevated);"></i>floating — --bg-elevated</span>
+      </div>
+    </div>
 
     <div class="spec wide">
       <h3>Buttons</h3>
@@ -459,7 +560,7 @@
           <div class="lbl">With content</div>
           <div class="brow">
             <div class="bcell"><button class="btn-primary"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>New row</button><span class="bcap"><b>Leading icon</b>icon + label</span></div>
-            <div class="bcell"><button class="btn-primary"><svg width="12" height="12" viewBox="0 0 24 24" fill="#fff" stroke="none"><path d="M7 4v16l13-8L7 4Z"/></svg>Run<span class="kbd" style="background:rgba(0,0,0,0.22);color:#fff;border:none;">⌘↵</span></button><span class="bcap"><b>Trailing shortcut</b>label + .kbd</span></div>
+            <div class="bcell"><button class="btn-primary"><svg width="12" height="12" viewBox="0 0 24 24" fill="#fff" stroke="none"><path d="M7 4v16l13-8L7 4Z"/></svg>Run<span class="keys"><kbd class="inv sm">⌘</kbd><kbd class="inv sm">↵</kbd></span></button><span class="bcap"><b>Trailing shortcut</b>label + .keys</span></div>
             <div class="bcell"><button class="btn-secondary">Export<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></button><span class="bcap"><b>Trailing icon</b>label + chevron</span></div>
           </div>
         </div>
@@ -510,10 +611,59 @@
 
     <div class="spec">
       <h3>Search trigger &amp; keys</h3>
-      <p>The command launcher reads as an input but is a button. Keyboard hints use the <code class="mono">.kbd</code> chip — mono, 10.5px, elevated fill.</p>
+      <p>The command launcher reads as an input but is a button. Keyboard hints sequence <code class="mono">&lt;kbd&gt;</code> keycaps inside <code class="mono">.keys</code> — one key per cap. The legacy <code class="mono">.kbd</code> mono chip stays only for the most compact single-glyph hints.</p>
       <div class="demo col">
-        <button class="search-trigger"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-3)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg><span style="flex:1;text-align:left;">Search or run…</span><span class="kbd">⌘K</span></button>
-        <div style="display:flex;gap:6px;padding-top:10px;"><span class="kbd">⌘K</span><span class="kbd">esc</span><span class="kbd">↵</span><span class="kbd">⌘↵</span></div>
+        <button class="search-trigger"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-3)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg><span style="flex:1;text-align:left;">Search or run…</span><span class="keys"><kbd>⌘</kbd><kbd>K</kbd></span></button>
+        <div style="display:flex;gap:10px;padding-top:10px;align-items:center;"><span class="keys"><kbd>⌘</kbd><kbd>K</kbd></span><kbd>esc</kbd><kbd>↵</kbd><span class="keys"><kbd>⌘</kbd><kbd>↵</kbd></span></div>
+      </div>
+    </div>
+
+    <div class="spec wide">
+      <h3>Keycap (<code class="mono">&lt;kbd&gt;</code>)</h3>
+      <p>A single physical key, rendered as a raised cap: UI font, 20px tall, hairline border on <code class="mono">--bg-elevated</code> with a top sheen and a 1px bottom shadow so it reads pressable. <b style="color:var(--text-2);font-weight:500;">One key per <code class="mono">&lt;kbd&gt;</code></b> — a shortcut is a row of caps inside <code class="mono">.keys</code>, never glued together in one pill. This is distinct from the legacy <code class="mono">.kbd</code> mono chip used as a compact inline hint inside dense triggers and palette rows.</p>
+      <div class="demo col" style="align-items:stretch;gap:18px;">
+
+        <div class="bgroup">
+          <div class="lbl">Anatomy — a chord is a sequence of caps</div>
+          <div class="kbd-grid">
+            <div class="kbd-cell"><span class="keys"><kbd>⌘</kbd><kbd>R</kbd></span><span class="kbd-cap"><b>Refresh</b>⌘ + R</span></div>
+            <div class="kbd-cell"><span class="keys"><kbd>⌘</kbd><kbd>↵</kbd></span><span class="kbd-cap"><b>Run</b>⌘ + Return</span></div>
+            <div class="kbd-cell"><span class="keys"><kbd>⌘</kbd><kbd>⇧</kbd><kbd>U</kbd></span><span class="kbd-cap"><b>Upload</b>three caps</span></div>
+            <div class="kbd-cell"><span class="keys"><kbd>G</kbd><span class="ksep">then</span><kbd>T</kbd></span><span class="kbd-cap"><b>Go to tables</b>sequence</span></div>
+          </div>
+        </div>
+
+        <div class="bgroup">
+          <div class="lbl">Single keys</div>
+          <div class="demo" style="border:none;background:transparent;padding:0;gap:7px;">
+            <kbd>⌘</kbd><kbd>⇧</kbd><kbd>⌥</kbd><kbd>⌃</kbd><kbd>↵</kbd><kbd>⌫</kbd><kbd>⇥</kbd><kbd>↑</kbd><kbd>↓</kbd><kbd>esc</kbd><kbd>A</kbd><kbd>/</kbd>
+          </div>
+        </div>
+
+        <div class="bgroup">
+          <div class="lbl">Sizes</div>
+          <div class="demo" style="border:none;background:transparent;padding:0;gap:18px;align-items:center;">
+            <span class="keys"><kbd class="sm">⌘</kbd><kbd class="sm">K</kbd></span>
+            <span class="keys"><kbd>⌘</kbd><kbd>K</kbd></span>
+            <span class="keys"><kbd class="lg">⌘</kbd><kbd class="lg">K</kbd></span>
+            <span class="keys"><kbd class="ghost">⌘</kbd><kbd class="ghost">K</kbd></span>
+            <span class="bcap" style="font-family:var(--mono);font-size:10px;color:var(--text-4);">.sm · default · .lg · .ghost</span>
+          </div>
+        </div>
+
+        <div class="kbd-do2">
+          <div class="kbd-judge do">
+            <div class="jh"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>Do — one key per cap</div>
+            <div class="jrow"><span class="keys"><kbd>⌘</kbd><kbd>R</kbd></span><span class="jcode">&lt;kbd&gt;⌘&lt;/kbd&gt;&lt;kbd&gt;R&lt;/kbd&gt;</span></div>
+            <div class="jrow"><span class="keys"><kbd>⌘</kbd><kbd>⇧</kbd><kbd>P</kbd></span><span class="jcode">three caps in <code class="mono">.keys</code></span></div>
+          </div>
+          <div class="kbd-judge dont">
+            <div class="jh"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>Don't — multiple keys in one cap</div>
+            <div class="jrow"><kbd class="kbd-bad">⌘R</kbd><span class="jcode">&lt;kbd&gt;⌘R&lt;/kbd&gt;</span></div>
+            <div class="jrow"><kbd class="kbd-bad">⌘ Shift P</kbd><span class="jcode">whole chord in one pill</span></div>
+          </div>
+        </div>
+
       </div>
     </div>
 
@@ -742,11 +892,11 @@
       <p>Right-click overlay on cells and rows. Elevated surface, pop shadow, 6px items that fill <code class="mono">--bg-hover</code> on hover. Shortcuts trail in mono; destructive actions sit below a hairline in red.</p>
       <div class="demo" style="justify-content:center;">
         <div class="menu">
-          <div class="mi active"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>Copy cell<span class="mk">⌘C</span></div>
-          <div class="mi"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>Edit value<span class="mk">↵</span></div>
+          <div class="mi active"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>Copy cell<span class="keys" style="margin-left:auto;"><kbd class="ghost sm">⌘</kbd><kbd class="ghost sm">C</kbd></span></div>
+          <div class="mi"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>Edit value<span class="keys" style="margin-left:auto;"><kbd class="ghost sm">↵</kbd></span></div>
           <div class="mi"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4h18l-7 8v6l-4 2v-8L3 4Z"/></svg>Filter by value</div>
           <div class="msep"></div>
-          <div class="mi danger"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2m-9 0v14a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V6"/></svg>Delete row<span class="mk">⌫</span></div>
+          <div class="mi danger"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2m-9 0v14a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V6"/></svg>Delete row<span class="keys" style="margin-left:auto;"><kbd class="ghost sm">⌫</kbd></span></div>
         </div>
       </div>
     </div>
@@ -783,7 +933,7 @@
     <div class="spec wide">
       <h3>Dialog</h3>
       <p>A focused decision overlay. 14px-radius elevated surface with a pop shadow over a dimmed page. Header pairs a tinted glyph tile with title and subtext; the footer right-aligns a ghost cancel and a single primary — destructive variants fill the primary with red.</p>
-      <div class="demo" style="justify-content:center;background:var(--bg-base);padding:30px;">
+      <div class="demo" style="justify-content:center;padding:36px;background:radial-gradient(60% 80% at 28% 18%, rgba(110,121,214,0.22), transparent 60%), radial-gradient(54% 72% at 82% 92%, rgba(45,212,191,0.12), transparent 60%), var(--bg-base);">
         <div class="dialog">
           <div class="dlg-head">
             <span class="dlg-ic" style="background:color-mix(in srgb, var(--red) 15%, transparent);"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--red)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 2 20h20L12 3Z"/><path d="M12 9v5M12 17h.01"/></svg></span>
@@ -798,7 +948,7 @@
           </div>
           <div class="dlg-foot">
             <button class="btn-chip">Cancel</button>
-            <button class="btn-danger">Run statement<span class="kbd" style="background:rgba(0,0,0,0.22);color:#fff;border:none;">⌘↵</span></button>
+            <button class="btn-danger">Run statement<span class="keys"><kbd class="inv sm">⌘</kbd><kbd class="inv sm">↵</kbd></span></button>
           </div>
         </div>
       </div>

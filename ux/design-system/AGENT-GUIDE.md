@@ -46,7 +46,7 @@ off it, so the product's accent tweak recolors the whole dialog.
 ## 3. Dialog shell
 
 - **Overlay:** `position: fixed; inset: 0; z-index: 110;` scrim `rgba(0,0,0,0.55)` + `backdrop-filter: blur(3px)`; flex, top-aligned, `padding-top: 8vh`. Click-scrim closes. (Same recipe as the ⌘K command palette.)
-- **Card:** `width: 640px; max-width: 92vw; max-height: 84vh;` flex column. `background: linear-gradient(180deg, rgba(255,255,255,0.022), transparent 22%), var(--bg-elevated)`; `border: 1px solid var(--border-strong)`; `border-radius: 14px`; `box-shadow: var(--shadow-pop)`; `overflow: hidden`. Entrance: `.fade-in` (180ms fade + 2px rise).
+- **Card:** `width: 640px; max-width: 92vw; max-height: 84vh;` flex column. Frosted glass: `background: color-mix(in srgb, var(--bg-elevated) 78%, transparent)` + `backdrop-filter: blur(30px) saturate(1.4)`; `border: 1px solid var(--border-strong)`; `border-radius: 14px`; `box-shadow: var(--shadow-pop)`; `overflow: hidden`. Entrance: `.fade-in` (180ms fade + 2px rise). The translucent fill lets the dimmed page frost through, matching the glass button family.
 - **Header (fixed):** 30×30 `--accent-soft` rounded tile with gear icon in `--accent`; title "Editor settings" 15px/600 `--text-1`; sub-caption 11.5px `--text-3`; trailing 28×28 close `IconBtn`. `--border` bottom.
 - **Body (scrolls):** `padding: 20px 18px; overflow-y: auto`. Sections separated by `--border-soft` hairlines (`height:1px; margin:20px 0`).
 - **Footer (fixed):** `--bg-base`, `--border` top. Left: text-button "Reset to defaults" (`--text-3` → `--text-1` on hover). Right: chip **Cancel** + **primary** Done button (gradient per DS recipe) with an `esc` kbd chip.
