@@ -45,10 +45,13 @@ export function HomePage() {
           <h1 className="page-title">Home</h1>
           <p className="page-sub">
             {open.length} open · {done.length} done
+            {/* Plain, not purple: the strip now carries the AI "voice" up top, so
+                this stays a neutral fact in the sub-line — one fewer purple
+                signal competing in the same viewport. */}
             {ai > 0 && (
               <>
                 {" · "}
-                <span style={{ color: "var(--purple)" }}>{ai} assigned to Claude</span>
+                {ai} assigned to Claude
               </>
             )}
           </p>
