@@ -33,12 +33,14 @@ export function Tooltip({
   side = "top",
   delay = 350,
   gap = 8,
+  autoHide,
   children,
 }: {
   label: ReactNode;
   side?: Side;
   delay?: number;
   gap?: number;
+  autoHide?: number;
   children: ReactElement<Record<string, unknown>>;
 }) {
   const anchorRef = useRef<HTMLElement | null>(null);
@@ -66,6 +68,16 @@ export function Tooltip({
 
   // Tear down any pending timer if we unmount mid-hover.
   useEffect(() => clear, []);
+
+  // When `autoHide` is set, dismiss the bubble after a fixed delay once shown so
+  // the hint doesn't linger (e.g. while the user keeps typing in a focused input).
+  // Uses a local timeout — never the hover-show `timer` ref — to avoid interfering
+  // with the open delay. When `autoHide` is undefined the effect is a no-op.
+  useEffect(() => {
+    if (!open || !autoHide || autoHide <= 0) return;
+    const t: ReturnType<typeof setTimeout> = setTimeout(() => setOpen(false), autoHide);
+    return () => clearTimeout(t);
+  }, [open, autoHide]);
 
   // While open, dismiss on scroll/resize — the anchor has moved and a stale
   // bubble looks broken. Cheaper and steadier than continuous repositioning.
