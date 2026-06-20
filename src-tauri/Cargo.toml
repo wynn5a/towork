@@ -1,6 +1,6 @@
 [package]
 name = "towork"
-version = "0.3.0"
+version = "0.4.0"
 description = "Task management where AI is a first-class teammate"
 authors = ["Towork"]
 edition = "2021"
