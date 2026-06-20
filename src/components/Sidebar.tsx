@@ -64,28 +64,35 @@ export function Sidebar() {
       </div>
 
       <div className="side-nav">
-        <div className={`nav-item${isHome ? " active" : ""}`} onClick={() => navigate("/")}>
+        <button
+          type="button"
+          className={`nav-item${isHome ? " active" : ""}`}
+          aria-current={isHome ? "page" : undefined}
+          onClick={() => navigate("/")}
+        >
           <span className="ni-ic">
             <Icon name="inbox" size={16} />
           </span>
           <span className="ni-label">Home</span>
-        </div>
-        <div
+        </button>
+        <button
+          type="button"
           className={`nav-item${isProjects ? " active" : ""}`}
+          aria-current={isProjects ? "page" : undefined}
           onClick={() => navigate("/projects")}
         >
           <span className="ni-ic">
             <Icon name="project" size={16} />
           </span>
           <span className="ni-label">Projects</span>
-        </div>
-        <div className="nav-item" onClick={() => ui.openCommandPalette()}>
+        </button>
+        <button type="button" className="nav-item" onClick={() => ui.openCommandPalette()}>
           <span className="ni-ic">
             <Icon name="command" size={16} />
           </span>
           <span className="ni-label">Command</span>
           <Kbd>⌘K</Kbd>
-        </div>
+        </button>
       </div>
 
       <div className="side-grouplabel">
@@ -103,9 +110,11 @@ export function Sidebar() {
           const hue = projectHue(p.id);
           const active = activeProjectId === p.id;
           return (
-            <div
+            <button
               key={p.id}
+              type="button"
               className={`proj-row${active ? " active" : ""}`}
+              aria-current={active ? "page" : undefined}
               onClick={() => navigate(`/project/${p.id}`)}
             >
               <span
@@ -119,7 +128,7 @@ export function Sidebar() {
               </span>
               <span className="pr-name">{p.name}</span>
               <Count>{c.open}</Count>
-            </div>
+            </button>
           );
         })}
       </div>
