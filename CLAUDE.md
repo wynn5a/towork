@@ -45,3 +45,22 @@ pnpm tauri build        # package installers (needs full icon set incl. .icns/.i
 - **Design context for UI work.** Before designing or reshaping UI, read `docs/PRODUCT.md` (strategic: register `product`, target users, brand personality, anti-references, design principles, WCAG 2.1 AA target) and `docs/DESIGN.md` (the machine-readable Stitch-format token layer). `ux/design-system/` stays canonical for visuals; `docs/DESIGN.md` is derived from it and defers to it on any conflict.
 - **Activity log on every mutation.** Create/update/complete operations write an `ActivityLog` row with the correct actor (User from GUI, AI from MCP). Follow the existing `log_item_changes` pattern (`commands/todos.rs`) which diffs old vs. new and logs per-field changes.
 - New Tauri commands must be registered in the `invoke_handler!` list in `src-tauri/src/lib.rs` *and* given a typed wrapper in `src/lib/tauri.ts`.
+
+## Worktree workflow (enforced)
+
+Code changes in this repo must be made in an **isolated git worktree**, never the main checkout. This is enforced for every Claude Code session by hooks in `.claude/settings.json`:
+
+- **`.claude/hooks/require-worktree.sh`** (PreToolUse) denies `Edit`/`Write`/`NotebookEdit` whenever the target file is in the main checkout. Files inside a linked worktree, the session scratchpad, or `~/.claude` are allowed. It fails open (an unexpected error allows the edit) and is scoped to this repo only.
+- **`.claude/hooks/worktree-reminder.sh`** (SessionStart) reminds Claude to enter a worktree before changing code.
+- Background agents are isolated the same way via `worktree.bgIsolation: "worktree"`.
+
+**Worktree directory: `.worktrees/`** (gitignored). Create/enter one with the `EnterWorktree` tool, or manually:
+
+```bash
+git worktree add .worktrees/<branch> -b <branch>
+cd .worktrees/<branch>
+```
+
+New worktrees branch from the current local `HEAD` (`worktree.baseRef: "head"`) and symlink `node_modules` (no reinstall needed). `src-tauri/target` is intentionally *not* symlinked, so each worktree gets its own Rust build dir and parallel `cargo` builds don't collide. Clean up a finished worktree with `git worktree remove .worktrees/<branch>`.
+
+One-off edit in the main checkout: disable the hook from `/hooks`, or have the user override.

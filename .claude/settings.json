@@ -1,0 +1,32 @@
+{
+  "worktree": {
+    "bgIsolation": "worktree",
+    "baseRef": "head",
+    "symlinkDirectories": ["node_modules"]
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/worktree-reminder.sh\"",
+            "statusMessage": "Checking worktree workflow"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/require-worktree.sh\"",
+            "statusMessage": "Enforcing worktree isolation"
+          }
+        ]
+      }
+    ]
+  }
+}

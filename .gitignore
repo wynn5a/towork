@@ -151,3 +151,7 @@ vite.config.ts.timestamp-*
 
 # macOS
 .DS_Store
+
+# Claude Code worktrees (isolated per-session copies) and personal settings
+.worktrees/
+.claude/settings.local.json
