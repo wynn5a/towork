@@ -54,11 +54,14 @@ function buildBuckets(items: Item[], groupBy: GroupBy): Bucket[] {
       .filter((b) => b.items.length > 0);
   }
 
-  // status — Todo (open) / Done tabs, each ordered by urgency.
-  const todo = items.filter((i) => i.status !== "Done").sort(byUrgency);
+  // status — Open / In Progress / Done tabs, each ordered by urgency.
+  // Empty buckets are dropped below, so "In Progress" only appears when present.
+  const open = items.filter((i) => i.status === "Open").sort(byUrgency);
+  const inProgress = items.filter((i) => i.status === "In Progress").sort(byUrgency);
   const done = items.filter((i) => i.status === "Done").sort(byUrgency);
   return [
-    { key: "todo", label: "Todo", items: todo },
+    { key: "open", label: "Open", items: open },
+    { key: "in-progress", label: "In Progress", items: inProgress },
     { key: "done", label: "Done", items: done },
   ].filter((b) => b.items.length > 0);
 }
