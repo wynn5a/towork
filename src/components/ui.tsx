@@ -8,21 +8,32 @@ import { Tooltip } from "./Tooltip";
 export function Avatar({
   assignee,
   size = "sm",
+  decorative = false,
 }: {
   assignee: Assignee;
   size?: "xs" | "sm" | "" | "lg";
+  /** Purely decorative (e.g. a leading gutter mark): hidden from assistive tech
+   *  and tooltip-free, so it doesn't add redundant "Claude"/"You" announcements. */
+  decorative?: boolean;
 }) {
-  const cls = `avatar ${assignee === "AI" ? "ai" : "user"}${size ? " " + size : ""}`;
-  if (assignee === "AI") {
+  const isAI = assignee === "AI";
+  const cls = `avatar ${isAI ? "ai" : "user"}${size ? " " + size : ""}`;
+  const icon = (
+    <Icon
+      name={isAI ? "ai" : "user"}
+      size={isAI ? (size === "lg" ? 17 : 13) : size === "xs" ? 10 : 12}
+    />
+  );
+  if (decorative) {
     return (
-      <span className={cls} title="Claude">
-        <Icon name="ai" size={size === "lg" ? 17 : 13} />
+      <span className={cls} aria-hidden>
+        {icon}
       </span>
     );
   }
   return (
-    <span className={cls} title="You">
-      <Icon name="user" size={size === "xs" ? 10 : 12} />
+    <span className={cls} title={isAI ? "Claude" : "You"}>
+      {icon}
     </span>
   );
 }

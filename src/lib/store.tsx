@@ -9,8 +9,8 @@ import {
   type ReactNode,
 } from "react";
 import { listen } from "@tauri-apps/api/event";
-import { listIssues, listProjects, listTodos } from "./tauri";
-import type { Issue, Item, Project, Todo } from "./types";
+import { getActivity, listIssues, listProjects, listTodos } from "./tauri";
+import type { ActivityLog, Issue, Item, Project, Todo } from "./types";
 import { buildSeqMap, tag } from "./derive";
 
 export type ToastHue = "accent" | "green" | "red";
@@ -26,6 +26,9 @@ interface StoreCtx {
   todos: Todo[];
   issues: Issue[];
   items: Item[];
+  /** Claude's most recent actions (newest first, capped), kept in sync with
+   *  `items`/`seqId` because they all refresh in the same `reload()`. */
+  recentAiActivity: ActivityLog[];
   loading: boolean;
   reload: () => Promise<void>;
   projectById: (id: string | null | undefined) => Project | undefined;
@@ -42,15 +45,24 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [projects, setProjects] = useState<Project[]>([]);
   const [todos, setTodos] = useState<Todo[]>([]);
   const [issues, setIssues] = useState<Issue[]>([]);
+  const [activity, setActivity] = useState<ActivityLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [toasts, setToasts] = useState<Toast[]>([]);
   const toastSeq = useRef(0);
 
   const reload = useCallback(async () => {
-    const [p, t, i] = await Promise.all([listProjects(), listTodos(), listIssues()]);
+    const [p, t, i, a] = await Promise.all([
+      listProjects(),
+      listTodos(),
+      listIssues(),
+      // Activity is supporting chrome; never let it fail the core data load.
+      // Bounded so an ever-growing log isn't shipped in full on every change.
+      getActivity({ limit: 50 }).catch(() => [] as ActivityLog[]),
+    ]);
     setProjects(p);
     setTodos(t);
     setIssues(i);
+    setActivity(a);
     setLoading(false);
   }, []);
 
@@ -78,6 +90,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const seqMap = useMemo(() => buildSeqMap(projects, items), [projects, items]);
 
+  // Newest-first AI actions for the Home strip. Derived from the same `activity`
+  // that reload() refreshes alongside items, so labels resolve consistently.
+  const recentAiActivity = useMemo(
+    () => activity.filter((a) => a.actor === "AI").slice(0, 3),
+    [activity],
+  );
+
   const dismissToast = useCallback((id: number) => {
     setToasts((prev) => prev.filter((x) => x.id !== id));
   }, []);
@@ -97,6 +116,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       todos,
       issues,
       items,
+      recentAiActivity,
       loading,
       reload,
       projectById: (id) => projects.find((p) => p.id === id),
@@ -106,7 +126,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       toast,
       dismissToast,
     }),
-    [projects, todos, issues, items, loading, reload, seqMap, toasts, toast, dismissToast]
+    [projects, todos, issues, items, recentAiActivity, loading, reload, seqMap, toasts, toast, dismissToast]
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

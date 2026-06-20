@@ -374,6 +374,7 @@ pub fn query_activity(
     conn: &rusqlite::Connection,
     item_id: Option<&str>,
     item_type: Option<&str>,
+    limit: Option<i64>,
 ) -> anyhow::Result<Vec<ActivityLog>> {
     let mut query = String::from(
         "SELECT id, item_type, item_id, action, actor, old_value, new_value, created_at FROM activity_log WHERE 1=1",
@@ -388,6 +389,13 @@ pub fn query_activity(
         args.push(Box::new(it.to_string()));
     }
     query.push_str(" ORDER BY created_at DESC");
+    // Bound the result for callers that only render a few recent rows (e.g. the
+    // Home AI activity strip), so an ever-growing activity_log isn't serialized
+    // in full over the IPC bridge on every change.
+    if let Some(lim) = limit {
+        query.push_str(" LIMIT ?");
+        args.push(Box::new(lim));
+    }
 
     let mut stmt = conn.prepare(&query)?;
     let refs: Vec<&dyn rusqlite::types::ToSql> = args.iter().map(|p| p.as_ref()).collect();
@@ -664,19 +672,21 @@ mod tests {
         );
         insert_activity(&conn, &log2).unwrap();
 
-        assert_eq!(query_activity(&conn, None, None).unwrap().len(), 2);
+        assert_eq!(query_activity(&conn, None, None, None).unwrap().len(), 2);
         assert_eq!(
-            query_activity(&conn, Some("item-1"), None).unwrap().len(),
+            query_activity(&conn, Some("item-1"), None, None).unwrap().len(),
             1
         );
         assert_eq!(
-            query_activity(&conn, None, Some("Issue")).unwrap().len(),
+            query_activity(&conn, None, Some("Issue"), None).unwrap().len(),
             1
         );
         assert_eq!(
-            query_activity(&conn, Some("item-1"), Some("Issue")).unwrap().len(),
+            query_activity(&conn, Some("item-1"), Some("Issue"), None).unwrap().len(),
             0
         );
+        // LIMIT caps the result set for callers that only render a few rows.
+        assert_eq!(query_activity(&conn, None, None, Some(1)).unwrap().len(), 1);
     }
 
     #[test]

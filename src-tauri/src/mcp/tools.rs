@@ -222,7 +222,7 @@ pub fn call_tool(conn: &Connection, name: &str, args: Value) -> Result<Value, St
         "get_activity" => {
             let item_id = str_arg(&args, "item_id");
             let item_type = str_arg(&args, "item_type");
-            let activities = schema::query_activity(conn, item_id, item_type).map_err(|e| e.to_string())?;
+            let activities = schema::query_activity(conn, item_id, item_type, None).map_err(|e| e.to_string())?;
             Ok(text_result(json!(activities)))
         }
         other => Err(format!("unknown tool: {other}")),

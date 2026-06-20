@@ -91,11 +91,14 @@ export const getActivity = (opts?: {
   itemId?: string;
   itemType?: "Todo" | "Issue";
   projectId?: string;
+  /** Cap the number of rows (most-recent first). Omit for all. */
+  limit?: number;
 }): Promise<ActivityLog[]> =>
   invoke("get_activity", {
     itemId: opts?.itemId,
     itemType: opts?.itemType,
     projectId: opts?.projectId,
+    limit: opts?.limit,
   });
 
 /* ------------------------------- search ------------------------------- */

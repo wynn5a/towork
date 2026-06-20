@@ -162,7 +162,7 @@ export function ItemRow({
           type="button"
           className="item-check"
           aria-pressed={done}
-          aria-label={done ? `Mark ${id} as not done` : `Mark ${id} as done`}
+          aria-label={done ? `Mark ${id || item.title} as not done` : `Mark ${id || item.title} as done`}
           onClick={() => onToggle(item)}
         >
           <Icon name="check" size={11} stroke="#08130b" />
@@ -171,7 +171,7 @@ export function ItemRow({
       <button
         type="button"
         className="item-open"
-        aria-label={`Open ${id}: ${item.title}`}
+        aria-label={id ? `Open ${id}: ${item.title}` : `Open ${item.title}`}
         onClick={() => onOpen(item)}
       >
         <PrioritySignal priority={item.priority} />

@@ -1,81 +1,71 @@
 import { useEffect, useRef, useState } from "react";
-import { listen } from "@tauri-apps/api/event";
-import { getActivity } from "../lib/tauri";
-import type { ActivityLog } from "../lib/types";
 import { actionPhrase, relTime } from "../lib/derive";
 import { useStore } from "../lib/store";
 import { useUI } from "../lib/ui";
-import { Icon } from "../lib/icons";
-
-/** How many of Claude's most recent actions the strip shows at once. */
-const MAX_ENTRIES = 3;
+import { Avatar } from "./ui";
 
 /**
  * A compact, live strip at the top of Home that surfaces Claude's most recent
  * actions — making the AI teammate's participation legible on the most-visited
  * surface, rather than a single purple count buried in the sub-line.
  *
- * Shows AI activity only (your own actions are already visible to you), and
- * renders nothing when Claude hasn't acted. It re-fetches reactively on the
- * `towork:changed` event the embedded MCP server fires after Claude mutates the
- * database — the same signal the store uses to live-refresh the list. When a
- * genuinely new action arrives the strip pulses and announces it to assistive
- * tech via an aria-live region.
+ * It reads `recentAiActivity` from the store (which refreshes it on the same
+ * `towork:changed` event that already reloads the list), so the strip's entries,
+ * the item lookup, and `seqId` all update together — no second fetch, no race.
+ * When a genuinely new action arrives it pulses and announces it to assistive
+ * tech via a persistent aria-live region; renders nothing when Claude is idle.
  */
 export function HomeAiStrip() {
-  const { items, seqId } = useStore();
+  const { recentAiActivity, items, seqId } = useStore();
   const ui = useUI();
-  const [entries, setEntries] = useState<ActivityLog[] | null>(null);
   const [flash, setFlash] = useState(false);
   const [announce, setAnnounce] = useState("");
+  // The newest id we've already reacted to. `undefined` = not yet initialised,
+  // so the first population (pre-existing history) stays quiet.
+  const latestId = useRef<string | null | undefined>(undefined);
 
-  // The id of the newest entry we've already shown, so a freshly-arrived action
-  // pulses/announces while the initial load (pre-existing history) stays quiet.
-  const latestId = useRef<string | null>(null);
-  // `seqId` is recreated on every store reload; read it through a ref so the
-  // fetch effect can stay mount-only (one listener, no churn).
-  const seqIdRef = useRef(seqId);
-  seqIdRef.current = seqId;
-
+  // Pulse + announce only on a genuinely new AI action.
   useEffect(() => {
-    let alive = true;
-    let flashTimer: ReturnType<typeof setTimeout> | undefined;
+    const newest = recentAiActivity[0];
+    const newestId = newest?.id ?? null;
+    if (latestId.current === undefined) {
+      latestId.current = newestId; // initial baseline — stay quiet
+      return;
+    }
+    if (!newest || newestId === latestId.current) {
+      latestId.current = newestId;
+      return;
+    }
+    latestId.current = newestId;
+    // seqId resolves correctly here: the store updates `recentAiActivity` and the
+    // seq map in the same reload, so by this render the new item is mapped.
+    const label = seqId(newest.item_id) || newest.item_type;
+    const text = `Claude ${actionPhrase(newest.action)} ${label}`;
+    // Clear first so two identical consecutive strings still re-fire the live
+    // region (React skips a no-op same-value state update otherwise).
+    setAnnounce("");
+    setFlash(false);
+    const raf = requestAnimationFrame(() => {
+      setAnnounce(text);
+      setFlash(true);
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [recentAiActivity, seqId]);
 
-    const load = async (isLive: boolean) => {
-      try {
-        const all = await getActivity();
-        if (!alive) return;
-        const ai = all.filter((a) => a.actor === "AI").slice(0, MAX_ENTRIES);
-        setEntries(ai);
-        const newest = ai[0];
-        if (newest && newest.id !== latestId.current) {
-          // Celebrate only live arrivals, never the initial history load.
-          if (isLive) {
-            const label = seqIdRef.current(newest.item_id) || newest.item_type.toLowerCase();
-            setAnnounce(`Claude ${actionPhrase(newest.action)} ${label}`);
-            setFlash(false);
-            // Re-arm on the next frame so the pulse restarts even on rapid hits.
-            requestAnimationFrame(() => {
-              if (alive) setFlash(true);
-            });
-            clearTimeout(flashTimer);
-            flashTimer = setTimeout(() => alive && setFlash(false), 1600);
-          }
-          latestId.current = newest.id;
-        }
-      } catch {
-        if (alive) setEntries([]);
-      }
-    };
+  // Auto-clear the flash ring after one pulse.
+  useEffect(() => {
+    if (!flash) return;
+    const t = setTimeout(() => setFlash(false), 1600);
+    return () => clearTimeout(t);
+  }, [flash]);
 
-    load(false);
-    const unlisten = listen("towork:changed", () => load(true));
-    return () => {
-      alive = false;
-      clearTimeout(flashTimer);
-      unlisten.then((off) => off()).catch(() => {});
-    };
-  }, []);
+  // Keep relative times fresh while idle (re-render roughly once a minute).
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    if (recentAiActivity.length === 0) return;
+    const id = setInterval(() => setTick((n) => n + 1), 60_000);
+    return () => clearInterval(id);
+  }, [recentAiActivity.length]);
 
   return (
     <>
@@ -85,17 +75,14 @@ export function HomeAiStrip() {
       <span className="sr-only" role="status" aria-live="polite">
         {announce}
       </span>
-      {entries && entries.length > 0 && (
+      {recentAiActivity.length > 0 && (
         <section className={`ai-strip${flash ? " flash" : ""}`} aria-label="Recent Claude activity">
-          <span className="ai-strip-glyph" aria-hidden="true">
-            <Icon name="ai" size={13} />
-          </span>
+          <Avatar assignee="AI" size="sm" decorative />
           <ul className="ai-strip-list">
-            {entries.map((a) => {
+            {recentAiActivity.map((a) => {
               const id = seqId(a.item_id);
-              const item = items.find(
-                (i) => i.id === a.item_id && i.kind === a.item_type.toLowerCase(),
-              );
+              const kind = a.item_type === "Issue" ? "issue" : "todo";
+              const item = items.find((i) => i.id === a.item_id && i.kind === kind);
               const label = id || a.item_type;
               return (
                 <li key={a.id}>
