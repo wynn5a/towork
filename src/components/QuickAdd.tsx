@@ -16,6 +16,10 @@ const assigneeLabel = (a: Assignee) => (a === "AI" ? "Claude" : "You");
  *  which has room for a long note plus a concise title. */
 const TITLE_HANDOFF_LIMIT = 80;
 
+/** Platform-aware label for the dialog-handoff shortcut (Cmd+E on macOS,
+ *  Ctrl+E elsewhere) — mirrors the modifier the `onKeyDown` handler accepts. */
+const DIALOG_SHORTCUT = /Mac/i.test(navigator.platform) ? "⌘E" : "Ctrl+E";
+
 /** Remembers the last project picked in the quick-add bar across sessions. */
 const LAST_PROJECT_KEY = "towork:quickadd:lastProject";
 
@@ -160,34 +164,36 @@ export function QuickAdd() {
           <Icon name={kind} size={16} />
         </button>
       </Tooltip>
-      <input
-        ref={inputRef}
-        placeholder="Add a todo… type “issue …” to file an issue"
-        autoComplete="off"
-        value={text}
-        onChange={(e) => {
-          const v = e.target.value;
-          if (v.length > TITLE_HANDOFF_LIMIT) {
-            handoffToDialog(v);
-            return;
-          }
-          setText(v);
-        }}
-        onFocus={() => setFocus(true)}
-        onBlur={() => setFocus(false)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") {
-            e.preventDefault();
-            add();
-          }
-          // Cmd/Ctrl+E hands the current text off to the full dialog on demand,
-          // mirroring the auto-handoff for long titles.
-          if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "e") {
-            e.preventDefault();
-            handoffToDialog(text);
-          }
-        }}
-      />
+      <Tooltip label={`Press ${DIALOG_SHORTCUT} to open the full dialog`} side="bottom">
+        <input
+          ref={inputRef}
+          placeholder="Add a todo… type “issue …” to file an issue"
+          autoComplete="off"
+          value={text}
+          onChange={(e) => {
+            const v = e.target.value;
+            if (v.length > TITLE_HANDOFF_LIMIT) {
+              handoffToDialog(v);
+              return;
+            }
+            setText(v);
+          }}
+          onFocus={() => setFocus(true)}
+          onBlur={() => setFocus(false)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              add();
+            }
+            // Cmd/Ctrl+E hands the current text off to the full dialog on demand,
+            // mirroring the auto-handoff for long titles.
+            if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "e") {
+              e.preventDefault();
+              handoffToDialog(text);
+            }
+          }}
+        />
+      </Tooltip>
       <Tooltip label="Assign to">
         <button
           className="prop-pill qa-assignee"
