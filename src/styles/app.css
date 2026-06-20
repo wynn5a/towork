@@ -30,7 +30,7 @@ button { font-family: inherit; }
 .nav-item:focus-visible,
 .proj-row:focus-visible,
 .side-foot:focus-visible,
-.ai-strip-entry:focus-visible {
+.side-ai-entry:focus-visible {
   outline-offset: -2px;
 }
 .item-row:focus-within { background: var(--bg-hover); }
@@ -468,50 +468,49 @@ button { font-family: inherit; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
 /* ----------------------------------------------------------------
-   Home AI activity strip — Claude's recent actions, led at the top
-   of Home. Restrained, purple-accented (the teammate hue). Reads as a
-   quiet strip, never a hero card; chrome still recedes.
+   Sidebar AI activity — Claude's recent actions, pinned just above the
+   MCP footer (the teammate grouped with the server it speaks through).
+   Restrained, purple-accented; recedes like the rest of the rail. A
+   "Claude" header attributes the block so entries drop the actor prefix.
 ---------------------------------------------------------------- */
-.ai-strip {
-  display: flex; align-items: flex-start; gap: 11px;
-  padding: 9px 11px; margin-bottom: 18px;
-  border-radius: var(--radius);
-  border: 1px solid color-mix(in srgb, var(--purple) 20%, var(--border));
-  background: color-mix(in srgb, var(--purple) 6%, var(--bg-panel));
+.side-ai {
+  flex-shrink: 0;
+  border-top: 1px solid var(--border-soft);
+  padding: 9px 8px 5px;
 }
-/* Leading mark is a decorative AI <Avatar> (see HomeAiStrip), reused rather than
-   re-styled, so it reads as Claude the actor. Nudge it to align with the first
-   entry's text baseline. */
-.ai-strip > .avatar { margin-top: 1px; }
-.ai-strip-list {
-  flex: 1; min-width: 0; list-style: none; margin: 0; padding: 0;
+.side-ai-head {
+  display: flex; align-items: center; gap: 8px;
+  padding: 0 6px 6px;
+  font-family: var(--mono); font-size: 10.5px; font-weight: 600;
+  letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-4);
+}
+.side-ai-list {
+  list-style: none; margin: 0; padding: 0;
   display: flex; flex-direction: column; gap: 1px;
 }
-.ai-strip-entry {
-  width: 100%; display: flex; align-items: center; gap: 10px;
-  padding: 3px 7px; border: 0; background: none; border-radius: var(--radius-sm);
+.side-ai-entry {
+  width: 100%; display: flex; align-items: center; gap: 8px;
+  padding: 4px 6px; border: 0; background: none; border-radius: var(--radius-sm);
   font: inherit; color: var(--text-2); text-align: left; cursor: pointer;
   transition: background-color var(--dur-2) var(--ease), color var(--dur-2) var(--ease);
 }
-.ai-strip-entry:hover:not(:disabled) { background: var(--bg-hover); color: var(--text-1); }
+.side-ai-entry:hover:not(:disabled) { background: var(--bg-hover); color: var(--text-1); }
 /* Deleted-item entry: inactive, using the same 0.55 mute as a completed row. */
-.ai-strip-entry:disabled { cursor: default; opacity: 0.55; }
-.ase-text {
-  flex: 1; min-width: 0; font-size: 12.5px; line-height: 1.5;
+.side-ai-entry:disabled { cursor: default; opacity: 0.55; }
+.sae-text {
+  flex: 1; min-width: 0; font-size: 12px; line-height: 1.45;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.ase-actor { color: var(--purple); font-weight: 500; }
-.ase-id { font-family: var(--mono); font-size: 11.5px; color: var(--text-1); }
-.ase-time {
-  flex-shrink: 0; font-family: var(--mono); font-size: 10.5px;
+.sae-id { font-family: var(--mono); font-size: 11px; color: var(--text-1); }
+.sae-time {
+  flex-shrink: 0; font-family: var(--mono); font-size: 10px;
   color: var(--text-4); font-variant-numeric: tabular-nums;
 }
-/* A freshly-arrived live action briefly rings the strip in the teammate hue. */
-.ai-strip.flash { animation: ai-strip-flash 1.6s var(--ease-out); }
-@keyframes ai-strip-flash {
-  0%   { box-shadow: 0 0 0 0 color-mix(in srgb, var(--purple) 38%, transparent); }
-  35%  { box-shadow: 0 0 0 5px color-mix(in srgb, var(--purple) 16%, transparent); }
-  100% { box-shadow: 0 0 0 6px transparent; }
+/* A freshly-arrived live action briefly tints the block in the teammate hue. */
+.side-ai.flash { animation: side-ai-flash 1.6s var(--ease-out); }
+@keyframes side-ai-flash {
+  0%   { background-color: color-mix(in srgb, var(--purple) 14%, transparent); }
+  100% { background-color: transparent; }
 }
 
 /* Visually hidden, but available to assistive tech — the aria-live region.

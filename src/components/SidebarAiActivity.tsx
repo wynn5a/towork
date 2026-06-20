@@ -5,17 +5,20 @@ import { useUI } from "../lib/ui";
 import { Avatar } from "./ui";
 
 /**
- * A compact, live strip at the top of Home that surfaces Claude's most recent
- * actions — making the AI teammate's participation legible on the most-visited
- * surface, rather than a single purple count buried in the sub-line.
+ * A compact, live block pinned above the MCP footer in the sidebar that surfaces
+ * Claude's most recent actions — making the AI teammate's participation legible
+ * from every screen, not just Home, and grouping it with the server it speaks
+ * through.
  *
- * It reads `recentAiActivity` from the store (which refreshes it on the same
- * `towork:changed` event that already reloads the list), so the strip's entries,
- * the item lookup, and `seqId` all update together — no second fetch, no race.
- * When a genuinely new action arrives it pulses and announces it to assistive
- * tech via a persistent aria-live region; renders nothing when Claude is idle.
+ * It reads `recentAiActivity` from the store (already capped to the latest few,
+ * refreshed on the same `towork:changed` event that reloads the list), so the
+ * entries, the item lookup, and `seqId` all update together — no second fetch,
+ * no race. When a genuinely new action arrives it pulses and announces it to
+ * assistive tech via a persistent aria-live region; renders nothing when Claude
+ * is idle. A "Claude" group header attributes the block, so each entry can drop
+ * the redundant actor prefix and stay readable in the narrow rail.
  */
-export function HomeAiStrip() {
+export function SidebarAiActivity() {
   const { recentAiActivity, items, seqId } = useStore();
   const ui = useUI();
   const [flash, setFlash] = useState(false);
@@ -52,7 +55,7 @@ export function HomeAiStrip() {
     return () => cancelAnimationFrame(raf);
   }, [recentAiActivity, seqId]);
 
-  // Auto-clear the flash ring after one pulse.
+  // Auto-clear the flash after one pulse.
   useEffect(() => {
     if (!flash) return;
     const t = setTimeout(() => setFlash(false), 1600);
@@ -70,15 +73,18 @@ export function HomeAiStrip() {
   return (
     <>
       {/* Persistent live region — must pre-exist in the DOM so a screen reader
-          announces the first AI action that brings the strip into view, not
+          announces the first AI action that brings the block into view, not
           only later ones. Visually hidden; harmless when empty. */}
       <span className="sr-only" role="status" aria-live="polite">
         {announce}
       </span>
       {recentAiActivity.length > 0 && (
-        <section className={`ai-strip${flash ? " flash" : ""}`} aria-label="Recent Claude activity">
-          <Avatar assignee="AI" size="sm" decorative />
-          <ul className="ai-strip-list">
+        <section className={`side-ai${flash ? " flash" : ""}`} aria-label="Recent Claude activity">
+          <div className="side-ai-head">
+            <Avatar assignee="AI" size="xs" decorative />
+            Claude
+          </div>
+          <ul className="side-ai-list">
             {recentAiActivity.map((a) => {
               const id = seqId(a.item_id);
               const kind = a.item_type === "Issue" ? "issue" : "todo";
@@ -88,7 +94,7 @@ export function HomeAiStrip() {
                 <li key={a.id}>
                   <button
                     type="button"
-                    className="ai-strip-entry"
+                    className="side-ai-entry"
                     disabled={!item}
                     title={item ? `Open ${label}` : undefined}
                     onClick={
@@ -102,11 +108,10 @@ export function HomeAiStrip() {
                         : undefined
                     }
                   >
-                    <span className="ase-text">
-                      <span className="ase-actor">Claude</span> {actionPhrase(a.action)}{" "}
-                      <span className="ase-id">{label}</span>
+                    <span className="sae-text">
+                      {actionPhrase(a.action)} <span className="sae-id">{label}</span>
                     </span>
-                    <span className="ase-time">{relTime(a.created_at)}</span>
+                    <span className="sae-time">{relTime(a.created_at)}</span>
                   </button>
                 </li>
               );

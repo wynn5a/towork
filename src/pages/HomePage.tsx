@@ -3,7 +3,6 @@ import { useStore } from "../lib/store";
 import { useUI } from "../lib/ui";
 import { useItemActions } from "../lib/actions";
 import { QuickAdd } from "../components/QuickAdd";
-import { HomeAiStrip } from "../components/HomeAiStrip";
 import { ItemList, ListSkeleton } from "../components/items";
 import { Count, EmptyState } from "../components/ui";
 import type { Item } from "../lib/types";
@@ -39,15 +38,14 @@ export function HomePage() {
 
   return (
     <div className="view-pad">
-      <HomeAiStrip />
       <div className="page-head">
         <div className="ph-text">
           <h1 className="page-title">Home</h1>
           <p className="page-sub">
             {open.length} open · {done.length} done
-            {/* Plain, not purple: the strip now carries the AI "voice" up top, so
-                this stays a neutral fact in the sub-line — one fewer purple
-                signal competing in the same viewport. */}
+            {/* Claude's live activity now lives in the sidebar (visible from every
+                screen), so this stays a neutral fact in the sub-line rather than
+                competing for the AI "voice". */}
             {ai > 0 && (
               <>
                 {" · "}

@@ -7,6 +7,7 @@ import { countItems, projectHue } from "../lib/derive";
 import { Icon } from "../lib/icons";
 import { Count, Kbd } from "./ui";
 import { Tooltip } from "./Tooltip";
+import { SidebarAiActivity } from "./SidebarAiActivity";
 // The app icon (web-usable sibling of icon.icns, generated together by `tauri icon`).
 import appIcon from "../../src-tauri/icons/128x128.png";
 
@@ -132,6 +133,8 @@ export function Sidebar() {
           );
         })}
       </div>
+
+      <SidebarAiActivity />
 
       <Tooltip
         label={mcpUrl ? `MCP server listening — click to copy ${mcpUrl}` : "MCP server starting…"}
