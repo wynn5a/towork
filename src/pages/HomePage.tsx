@@ -13,7 +13,7 @@ type Tab = "open" | "in-progress" | "done";
 export function HomePage() {
   const { items, projects, loading } = useStore();
   const ui = useUI();
-  const { toggleDone } = useItemActions();
+  const { cycleStatus } = useItemActions();
   const [tab, setTab] = useState<Tab>("open");
 
   const open = items.filter((i) => i.status === "Open");
@@ -87,7 +87,7 @@ export function HomePage() {
                 emptyIcon="inbox"
                 emptyTitle="Nothing here yet"
                 emptyDescription="Type above and press Enter to add your first todo or issue."
-                onToggle={toggleDone}
+                onToggle={cycleStatus}
                 onOpen={openItem}
               />
             </div>
@@ -134,7 +134,7 @@ export function HomePage() {
                         ? "Items you've started will show up here."
                         : "Completed todos and issues will collect here."
                   }
-                  onToggle={toggleDone}
+                  onToggle={cycleStatus}
                   onOpen={openItem}
                 />
               </div>

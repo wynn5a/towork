@@ -12,22 +12,28 @@ import type { Item } from "./types";
 export function useItemActions() {
   const { reload, toast, seqId } = useStore();
 
-  const toggleDone = useCallback(
+  // Advance an item through the Open → In Progress → Done → Open lifecycle.
+  const cycleStatus = useCallback(
     async (item: Item) => {
       const label = `${seqId(item.id)} · ${item.title}`;
-      if (item.status === "Done") {
-        if (item.kind === "todo") await updateTodo(item.id, { status: "Open" });
-        else await updateIssue(item.id, { status: "Open" });
-        toast("Reopened", label, "green");
-      } else {
+      if (item.status === "Open") {
+        if (item.kind === "todo") await updateTodo(item.id, { status: "In Progress" });
+        else await updateIssue(item.id, { status: "In Progress" });
+        toast("In progress", label, "accent");
+      } else if (item.status === "In Progress") {
+        // Use complete* so the activity log records "Completed".
         if (item.kind === "todo") await completeTodo(item.id);
         else await completeIssue(item.id);
         toast("Marked done", label, "green");
+      } else {
+        if (item.kind === "todo") await updateTodo(item.id, { status: "Open" });
+        else await updateIssue(item.id, { status: "Open" });
+        toast("Reopened", label, "green");
       }
       await reload();
     },
     [reload, toast, seqId]
   );
 
-  return { toggleDone };
+  return { cycleStatus };
 }

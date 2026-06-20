@@ -67,7 +67,7 @@ export function ProjectPage() {
   const { id = "" } = useParams<{ id: string }>();
   const { projectById, itemsForProject, loading } = useStore();
   const ui = useUI();
-  const { toggleDone } = useItemActions();
+  const { cycleStatus } = useItemActions();
   const [tab, setTab] = useState<Tab>("todos");
   const [groupBy, setGroupBy] = useState<GroupBy>("status");
   const [subTab, setSubTab] = useState<string | null>(null);
@@ -213,7 +213,7 @@ export function ProjectPage() {
                 New {tab === "issues" ? "issue" : "todo"}
               </button>
             }
-            onToggle={toggleDone}
+            onToggle={cycleStatus}
             onOpen={(it) => openEdit(it.id, it.kind)}
           />
         </>

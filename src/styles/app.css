@@ -457,6 +457,10 @@ body::before {
    green. The Done rule below sweeps the offset in. */
 .item-check svg path { stroke-dasharray: 24; }
 .item-check:hover { border-color: var(--green); }
+.item-row.in-progress .item-check {
+  border-color: var(--accent);
+  background: radial-gradient(circle, var(--accent) 0 4px, transparent 4px);
+}
 .item-row.done .item-check { background: var(--green); border-color: var(--green); color: #08130b; }
 
 .row-pri { display: grid; place-items: center; flex-shrink: 0; }

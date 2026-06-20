@@ -9,7 +9,7 @@ import { Icon } from "../lib/icons";
 export function SearchPage() {
   const { items } = useStore();
   const ui = useUI();
-  const { toggleDone } = useItemActions();
+  const { cycleStatus } = useItemActions();
   const [query, setQuery] = useState("");
   const [focus, setFocus] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -83,7 +83,7 @@ export function SearchPage() {
                       key={it.id}
                       item={it}
                       showProject
-                      onToggle={toggleDone}
+                      onToggle={cycleStatus}
                       onOpen={() =>
                         ui.openItemModal({ kind: "todo", projectId: it.project_id, itemId: it.id })
                       }
@@ -103,7 +103,7 @@ export function SearchPage() {
                       key={it.id}
                       item={it}
                       showProject
-                      onToggle={toggleDone}
+                      onToggle={cycleStatus}
                       onOpen={() =>
                         ui.openItemModal({ kind: "issue", projectId: it.project_id, itemId: it.id })
                       }

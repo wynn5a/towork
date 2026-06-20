@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from "react";
 import type { Item, Project } from "../lib/types";
 import { useStore } from "../lib/store";
-import { PRIORITY_RANK } from "../lib/derive";
+import { PRIORITY_RANK, STATUS_META } from "../lib/derive";
 import { Avatar, Count, PrioritySignal, EmptyState } from "./ui";
 import { Tooltip } from "./Tooltip";
 import { Icon, type IconName } from "../lib/icons";
@@ -154,8 +154,16 @@ export function ItemRow({
 }) {
   const { seqId, projectById, aiTouched } = useStore();
   const done = item.status === "Done";
+  const inProgress = item.status === "In Progress";
   const project = projectById(item.project_id);
   const id = seqId(item.id);
+  // Clicking the checkbox advances status, so it announces the NEXT action.
+  const nextActionLabel =
+    item.status === "Open"
+      ? "Mark as in progress"
+      : item.status === "In Progress"
+        ? "Mark as done"
+        : "Reopen";
   // A token (not just a boolean) so a second AI touch within the window remounts
   // the wash via its key and replays the acknowledgement instead of sitting idle.
   const touchToken = aiTouched[item.id];
@@ -163,18 +171,17 @@ export function ItemRow({
   // clickable <div>, so both actions are keyboard-reachable without nesting
   // interactive elements inside one another.
   return (
-    <div className={`item-row${done ? " done" : ""}`}>
+    <div className={`item-row${done ? " done" : inProgress ? " in-progress" : ""}`}>
       {touchToken !== undefined && (
         // The AI teammate just touched this item — wash the row purple, then
         // recede. First child so it paints behind the row content (see app.css).
         <span key={touchToken} className="ai-wash" aria-hidden="true" />
       )}
-      <Tooltip label={done ? "Mark as not done" : "Mark as done"}>
+      <Tooltip label={nextActionLabel}>
         <button
           type="button"
           className="item-check"
-          aria-pressed={done}
-          aria-label={done ? `Mark ${id || item.title} as not done` : `Mark ${id || item.title} as done`}
+          aria-label={`${id || item.title}: ${STATUS_META[item.status].label}. ${nextActionLabel}.`}
           onClick={() => onToggle(item)}
         >
           <Icon name="check" size={11} stroke="#08130b" />
