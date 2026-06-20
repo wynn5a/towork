@@ -151,28 +151,39 @@ export function ItemRow({
   const { seqId, projectById } = useStore();
   const done = item.status === "Done";
   const project = projectById(item.project_id);
+  const id = seqId(item.id);
+  // The row carries two sibling buttons (toggle + open) rather than one
+  // clickable <div>, so both actions are keyboard-reachable without nesting
+  // interactive elements inside one another.
   return (
-    <div className={`item-row${done ? " done" : ""}`} onClick={() => onOpen(item)}>
+    <div className={`item-row${done ? " done" : ""}`}>
       <Tooltip label={done ? "Mark as not done" : "Mark as done"}>
         <button
+          type="button"
           className="item-check"
-          onClick={(e) => {
-            e.stopPropagation();
-            onToggle(item);
-          }}
+          aria-pressed={done}
+          aria-label={done ? `Mark ${id} as not done` : `Mark ${id} as done`}
+          onClick={() => onToggle(item)}
         >
           <Icon name="check" size={11} stroke="#08130b" />
         </button>
       </Tooltip>
-      <PrioritySignal priority={item.priority} />
-      <span className="item-id">{seqId(item.id)}</span>
-      <span className="item-title">{item.title}</span>
-      <span className="row-right">
-        {showProject && project && (
-          <span className="search-result-proj">{project.name}</span>
-        )}
-        <Avatar assignee={item.assignee} size="sm" />
-      </span>
+      <button
+        type="button"
+        className="item-open"
+        aria-label={`Open ${id}: ${item.title}`}
+        onClick={() => onOpen(item)}
+      >
+        <PrioritySignal priority={item.priority} />
+        <span className="item-id">{id}</span>
+        <span className="item-title">{item.title}</span>
+        <span className="row-right">
+          {showProject && project && (
+            <span className="search-result-proj">{project.name}</span>
+          )}
+          <Avatar assignee={item.assignee} size="sm" />
+        </span>
+      </button>
     </div>
   );
 }

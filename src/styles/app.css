@@ -16,6 +16,24 @@ html, body {
 button { font-family: inherit; }
 ::selection { background: var(--accent-soft); }
 
+/* Keyboard-focus ring. Mouse clicks stay ringless (:focus-visible only fires
+   for keyboard / programmatic focus). Text inputs keep their own bespoke ring
+   via the wrapper `.focus` class + `.input:focus`, whose higher-specificity
+   `outline: none` rules already win over this, so there's no double ring. */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+/* Full-bleed buttons (list rows, nav, project rows, the MCP footer) pull the
+   ring inside their own box so it never clips against a tight container. */
+.item-open:focus-visible,
+.nav-item:focus-visible,
+.proj-row:focus-visible,
+.side-foot:focus-visible {
+  outline-offset: -2px;
+}
+.item-row:focus-within { background: var(--bg-hover); }
+
 /* density tweak: drives card / row paddings */
 :root { --d-scale: 1; }
 [data-density="compact"] { --d-scale: 0.82; }
@@ -75,7 +93,8 @@ button { font-family: inherit; }
 
 .side-nav { padding: 4px 8px 2px; display: flex; flex-direction: column; gap: 1px; }
 .nav-item {
-  display: flex; align-items: center; gap: 9px; padding: 7px 9px;
+  display: flex; align-items: center; gap: 9px; padding: 7px 9px; width: 100%; text-align: left;
+  border: 0; background: none;
   border-radius: var(--radius-sm); font-size: 13px; color: var(--text-2);
   cursor: pointer; transition: background-color var(--dur-2) var(--ease), color var(--dur-2) var(--ease);
 }
@@ -101,7 +120,8 @@ button { font-family: inherit; }
 
 .proj-list { flex: 1; overflow-y: auto; padding: 0 8px 8px; display: flex; flex-direction: column; gap: 1px; }
 .proj-row {
-  display: flex; align-items: center; gap: 9px; padding: 7px 9px;
+  display: flex; align-items: center; gap: 9px; padding: 7px 9px; width: 100%; text-align: left;
+  border: 0; background: none;
   border-radius: var(--radius-sm); cursor: pointer; color: var(--text-2);
   transition: background-color var(--dur-2) var(--ease), color var(--dur-2) var(--ease);
 }
@@ -350,8 +370,17 @@ button { font-family: inherit; }
 .item-row {
   display: flex; align-items: center; gap: 11px;
   padding: calc(9px * var(--d-scale)) 8px;
-  cursor: pointer; border-bottom: 1px solid var(--border-soft);
+  border-bottom: 1px solid var(--border-soft);
   transition: background-color var(--dur-2) var(--ease);
+}
+/* The open-action button fills the row right of the check; it carries no chrome
+   of its own so the row still reads as one flat strip, while keeping the open
+   and toggle actions as separate keyboard-reachable buttons. */
+.item-open {
+  flex: 1; min-width: 0;
+  display: flex; align-items: center; gap: 11px;
+  padding: 0; border: 0; background: none; font: inherit;
+  color: inherit; text-align: left; cursor: pointer;
 }
 .item-row:hover { background: var(--bg-hover); }
 .item-row.done { opacity: 0.55; }
