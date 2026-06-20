@@ -164,7 +164,7 @@ export function QuickAdd() {
           <Icon name={kind} size={16} />
         </button>
       </Tooltip>
-      <Tooltip label={`Press ${DIALOG_SHORTCUT} to open the full dialog`} side="bottom">
+      <Tooltip label={`Press ${DIALOG_SHORTCUT} to open the full dialog`} side="bottom" gap={22}>
         <input
           ref={inputRef}
           placeholder="Add a todo… type “issue …” to file an issue"

@@ -32,11 +32,13 @@ export function Tooltip({
   label,
   side = "top",
   delay = 350,
+  gap = 8,
   children,
 }: {
   label: ReactNode;
   side?: Side;
   delay?: number;
+  gap?: number;
   children: ReactElement<Record<string, unknown>>;
 }) {
   const anchorRef = useRef<HTMLElement | null>(null);
@@ -84,7 +86,6 @@ export function Tooltip({
     if (!open || !anchorRef.current || !tipRef.current) return;
     const a = anchorRef.current.getBoundingClientRect();
     const t = tipRef.current.getBoundingClientRect();
-    const gap = 8;
     const pad = 8;
     const vw = window.innerWidth;
     const vh = window.innerHeight;
@@ -108,7 +109,7 @@ export function Tooltip({
     left = Math.max(pad, Math.min(left, vw - t.width - pad));
     top = Math.max(pad, Math.min(top, vh - t.height - pad));
     setPos({ top, left });
-  }, [open, side, label]);
+  }, [open, side, label, gap]);
 
   const child = children;
   const childProps = child.props;
