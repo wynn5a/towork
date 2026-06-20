@@ -170,6 +170,12 @@ export function QuickAdd() {
             e.preventDefault();
             add();
           }
+          // Cmd/Ctrl+E hands the current text off to the full dialog on demand,
+          // mirroring the auto-handoff for long titles.
+          if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "e") {
+            e.preventDefault();
+            handoffToDialog(text);
+          }
         }}
       />
       <Tooltip label="Assign to">
