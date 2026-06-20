@@ -152,15 +152,23 @@ export function ItemRow({
   onToggle: (item: Item) => void;
   onOpen: (item: Item) => void;
 }) {
-  const { seqId, projectById } = useStore();
+  const { seqId, projectById, aiTouched } = useStore();
   const done = item.status === "Done";
   const project = projectById(item.project_id);
   const id = seqId(item.id);
+  // A token (not just a boolean) so a second AI touch within the window remounts
+  // the wash via its key and replays the acknowledgement instead of sitting idle.
+  const touchToken = aiTouched[item.id];
   // The row carries two sibling buttons (toggle + open) rather than one
   // clickable <div>, so both actions are keyboard-reachable without nesting
   // interactive elements inside one another.
   return (
     <div className={`item-row${done ? " done" : ""}`}>
+      {touchToken !== undefined && (
+        // The AI teammate just touched this item — wash the row purple, then
+        // recede. First child so it paints behind the row content (see app.css).
+        <span key={touchToken} className="ai-wash" aria-hidden="true" />
+      )}
       <Tooltip label={done ? "Mark as not done" : "Mark as done"}>
         <button
           type="button"

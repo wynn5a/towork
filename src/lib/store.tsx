@@ -29,6 +29,11 @@ interface StoreCtx {
   /** Claude's most recent actions (newest first, capped), kept in sync with
    *  `items`/`seqId` because they all refresh in the same `reload()`. */
   recentAiActivity: ActivityLog[];
+  /** Item ids the AI teammate has *just* mutated, each mapped to a token that
+   *  bumps on every fresh touch. A row reads `aiTouched[item.id]` to play (and,
+   *  via the token as a key, restart) its purple acknowledgement; entries clear
+   *  themselves ~1.8s after the action so the cue recedes. Empty for GUI edits. */
+  aiTouched: Record<string, number>;
   loading: boolean;
   reload: () => Promise<void>;
   projectById: (id: string | null | undefined) => Project | undefined;
@@ -49,6 +54,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [toasts, setToasts] = useState<Toast[]>([]);
   const toastSeq = useRef(0);
+  const [aiTouched, setAiTouched] = useState<Record<string, number>>({});
+  // Activity ids already reacted to. `null` = uninitialised, so the very first
+  // load registers a baseline and stays quiet (no flashing the whole history).
+  const seenAiIds = useRef<Set<string> | null>(null);
+  const aiClearTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
   const reload = useCallback(async () => {
     const [p, t, i, a] = await Promise.all([
@@ -97,6 +107,63 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     [activity],
   );
 
+  // Flag items the AI teammate just touched so their rows can acknowledge the
+  // change in place (the live counterpart to the sidebar pulse). Diffs the AI
+  // activity ids against what we've already seen; only genuinely new actions
+  // light up, and only AI ones — GUI (actor: User) edits never flash. Each
+  // touch auto-clears after ~1.8s so the cue recedes on its own.
+  useEffect(() => {
+    const aiRows = activity.filter((a) => a.actor === "AI");
+    if (seenAiIds.current === null) {
+      seenAiIds.current = new Set(aiRows.map((a) => a.id)); // baseline — stay quiet
+      return;
+    }
+    const seen = seenAiIds.current;
+    const touched: string[] = [];
+    for (const a of aiRows) {
+      if (seen.has(a.id)) continue;
+      seen.add(a.id);
+      if (a.item_id) touched.push(a.item_id);
+    }
+    if (touched.length === 0) return;
+    // The activity feed is capped at 50; keep `seen` from growing without bound
+    // across a long session while still covering the whole current window (so a
+    // pruned id can never resurface as "fresh" and re-flash).
+    if (seen.size > 400) seenAiIds.current = new Set(aiRows.map((a) => a.id));
+
+    setAiTouched((prev) => {
+      const next = { ...prev };
+      for (const id of touched) next[id] = (next[id] ?? 0) + 1;
+      return next;
+    });
+    const timers = aiClearTimers.current;
+    for (const id of touched) {
+      const existing = timers.get(id);
+      if (existing) clearTimeout(existing);
+      timers.set(
+        id,
+        setTimeout(() => {
+          timers.delete(id);
+          setAiTouched((prev) => {
+            if (!(id in prev)) return prev;
+            const next = { ...prev };
+            delete next[id];
+            return next;
+          });
+        }, 1800),
+      );
+    }
+  }, [activity]);
+
+  // Drop any pending acknowledgement timers on unmount.
+  useEffect(() => {
+    const timers = aiClearTimers.current;
+    return () => {
+      for (const t of timers.values()) clearTimeout(t);
+      timers.clear();
+    };
+  }, []);
+
   const dismissToast = useCallback((id: number) => {
     setToasts((prev) => prev.filter((x) => x.id !== id));
   }, []);
@@ -117,6 +184,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       issues,
       items,
       recentAiActivity,
+      aiTouched,
       loading,
       reload,
       projectById: (id) => projects.find((p) => p.id === id),
@@ -126,7 +194,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       toast,
       dismissToast,
     }),
-    [projects, todos, issues, items, recentAiActivity, loading, reload, seqMap, toasts, toast, dismissToast]
+    [projects, todos, issues, items, recentAiActivity, aiTouched, loading, reload, seqMap, toasts, toast, dismissToast]
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
