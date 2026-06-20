@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from "react";
 import type { Item, Project } from "../lib/types";
 import { useStore } from "../lib/store";
+import { useUI } from "../lib/ui";
 import { PRIORITY_RANK, STATUS_META } from "../lib/derive";
 import { Avatar, Count, PrioritySignal, EmptyState } from "./ui";
 import { Tooltip } from "./Tooltip";
@@ -153,6 +154,7 @@ export function ItemRow({
   onOpen: (item: Item) => void;
 }) {
   const { seqId, projectById, aiTouched } = useStore();
+  const ui = useUI();
   const done = item.status === "Done";
   const inProgress = item.status === "In Progress";
   const project = projectById(item.project_id);
@@ -182,7 +184,20 @@ export function ItemRow({
           type="button"
           className="item-check"
           aria-label={`${id || item.title}: ${STATUS_META[item.status].label}. ${nextActionLabel}.`}
-          onClick={() => onToggle(item)}
+          onClick={() => {
+            if (item.status === "Done") {
+              ui.confirm({
+                title: "Reopen this item?",
+                message: "It will move from Done back to Open.",
+                confirmLabel: "Reopen",
+                tone: "accent",
+                icon: "ring",
+                onConfirm: () => onToggle(item),
+              });
+            } else {
+              onToggle(item);
+            }
+          }}
         >
           <Icon name="check" size={11} stroke="#08130b" />
         </button>

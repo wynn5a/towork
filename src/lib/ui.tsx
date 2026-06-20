@@ -10,10 +10,20 @@ import { useNavigate } from "react-router-dom";
 import { useStore } from "./store";
 import { deleteProject as apiDeleteProject } from "./tauri";
 import type { Project } from "./types";
+import type { IconName } from "./icons";
 import { ItemModal, type ItemModalConfig } from "../components/ItemModal";
 import { ProjectModal } from "../components/ProjectModal";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { CommandPalette } from "../components/CommandPalette";
+
+export type ConfirmOptions = {
+  title: string;
+  message: string;
+  confirmLabel: string;
+  tone?: "danger" | "accent";
+  icon?: IconName;
+  onConfirm: () => void | Promise<void>;
+};
 
 interface UICtx {
   openCommandPalette: () => void;
@@ -21,6 +31,7 @@ interface UICtx {
   openProjectModal: (projectId?: string) => void;
   openItemModal: (config: ItemModalConfig) => void;
   confirmDeleteProject: (project: Project) => void;
+  confirm: (opts: ConfirmOptions) => void;
   isAnyOverlayOpen: () => boolean;
 }
 
@@ -33,9 +44,11 @@ export function UIProvider({ children }: { children: ReactNode }) {
   const [palette, setPalette] = useState(false);
   const [projectModal, setProjectModal] = useState<{ projectId?: string } | null>(null);
   const [itemModal, setItemModal] = useState<ItemModalConfig | null>(null);
-  const [confirm, setConfirm] = useState<Project | null>(null);
+  const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
+  const [confirmOpts, setConfirmOpts] = useState<ConfirmOptions | null>(null);
 
-  const confirmDeleteProject = useCallback((project: Project) => setConfirm(project), []);
+  const confirmDeleteProject = useCallback((project: Project) => setProjectToDelete(project), []);
+  const confirm = useCallback((opts: ConfirmOptions) => setConfirmOpts(opts), []);
 
   const value = useMemo<UICtx>(
     () => ({
@@ -44,9 +57,11 @@ export function UIProvider({ children }: { children: ReactNode }) {
       openProjectModal: (projectId?: string) => setProjectModal({ projectId }),
       openItemModal: (config) => setItemModal(config),
       confirmDeleteProject,
-      isAnyOverlayOpen: () => palette || !!projectModal || !!itemModal || !!confirm,
+      confirm,
+      isAnyOverlayOpen: () =>
+        palette || !!projectModal || !!itemModal || !!projectToDelete || !!confirmOpts,
     }),
-    [confirmDeleteProject, palette, projectModal, itemModal, confirm]
+    [confirmDeleteProject, confirm, palette, projectModal, itemModal, projectToDelete, confirmOpts]
   );
 
   return (
@@ -60,19 +75,30 @@ export function UIProvider({ children }: { children: ReactNode }) {
         />
       )}
       {itemModal && <ItemModal config={itemModal} onClose={() => setItemModal(null)} />}
-      {confirm && (
+      {projectToDelete && (
         <ConfirmDialog
-          title={`Delete “${confirm.name}”?`}
+          title={`Delete “${projectToDelete.name}”?`}
           message="The project and all of its todos and issues will be removed. This cannot be undone."
           confirmLabel="Delete project"
           onConfirm={async () => {
-            const id = confirm.id;
+            const id = projectToDelete.id;
             await apiDeleteProject(id);
-            toast("Project deleted", confirm.name, "red");
+            toast("Project deleted", projectToDelete.name, "red");
             await reload();
             navigate("/projects");
           }}
-          onClose={() => setConfirm(null)}
+          onClose={() => setProjectToDelete(null)}
+        />
+      )}
+      {confirmOpts && (
+        <ConfirmDialog
+          title={confirmOpts.title}
+          message={confirmOpts.message}
+          confirmLabel={confirmOpts.confirmLabel}
+          tone={confirmOpts.tone}
+          icon={confirmOpts.icon}
+          onConfirm={() => confirmOpts.onConfirm()}
+          onClose={() => setConfirmOpts(null)}
         />
       )}
     </Ctx.Provider>
