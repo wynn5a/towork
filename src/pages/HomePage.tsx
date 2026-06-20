@@ -7,18 +7,19 @@ import { ItemList, ListSkeleton } from "../components/items";
 import { Count, EmptyState } from "../components/ui";
 import type { Item } from "../lib/types";
 
-type Tab = "open" | "done";
+type Tab = "open" | "in-progress" | "done";
 
-/** Home — every todo and issue across all projects, split into Open / Done tabs. */
+/** Home — every todo and issue across all projects, split into Open / In Progress / Done tabs. */
 export function HomePage() {
   const { items, projects, loading } = useStore();
   const ui = useUI();
   const { toggleDone } = useItemActions();
   const [tab, setTab] = useState<Tab>("open");
 
-  const open = items.filter((i) => i.status !== "Done");
+  const open = items.filter((i) => i.status === "Open");
+  const inProgress = items.filter((i) => i.status === "In Progress");
   const done = items.filter((i) => i.status === "Done");
-  const ai = open.filter((i) => i.assignee === "AI").length;
+  const ai = items.filter((i) => i.status !== "Done" && i.assignee === "AI").length;
 
   const openItem = (it: Item) =>
     ui.openItemModal({ kind: it.kind, projectId: it.project_id, itemId: it.id });
@@ -42,7 +43,15 @@ export function HomePage() {
         <div className="ph-text">
           <h1 className="page-title">Home</h1>
           <p className="page-sub">
-            {open.length} open · {done.length} done
+            {open.length} open
+            {inProgress.length > 0 && (
+              <>
+                {" · "}
+                {inProgress.length} in progress
+              </>
+            )}
+            {" · "}
+            {done.length} done
             {/* Claude's live activity now lives in the sidebar (visible from every
                 screen), so this stays a neutral fact in the sub-line rather than
                 competing for the AI "voice". */}
@@ -92,6 +101,12 @@ export function HomePage() {
                   Open <Count>{open.length}</Count>
                 </button>
                 <button
+                  className={`tab${tab === "in-progress" ? " active" : ""}`}
+                  onClick={() => setTab("in-progress")}
+                >
+                  In Progress <Count>{inProgress.length}</Count>
+                </button>
+                <button
                   className={`tab${tab === "done" ? " active" : ""}`}
                   onClick={() => setTab("done")}
                 >
@@ -101,15 +116,23 @@ export function HomePage() {
               <div className="home-list">
                 <ItemList
                   key={tab}
-                  items={tab === "open" ? open : done}
+                  items={tab === "open" ? open : tab === "in-progress" ? inProgress : done}
                   groupBy="none"
                   showProject
                   emptyIcon="inbox"
-                  emptyTitle={tab === "open" ? "No open items" : "No completed items"}
+                  emptyTitle={
+                    tab === "open"
+                      ? "No open items"
+                      : tab === "in-progress"
+                        ? "Nothing in progress"
+                        : "No completed items"
+                  }
                   emptyDescription={
                     tab === "open"
                       ? "Everything here is done — nice."
-                      : "Completed todos and issues will collect here."
+                      : tab === "in-progress"
+                        ? "Items you've started will show up here."
+                        : "Completed todos and issues will collect here."
                   }
                   onToggle={toggleDone}
                   onOpen={openItem}
