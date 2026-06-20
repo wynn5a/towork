@@ -1,30 +1,8 @@
 import { useEffect, useState } from "react";
 import { getActivity } from "../lib/tauri";
 import type { ActivityLog } from "../lib/types";
-import { relTime } from "../lib/derive";
+import { actionPhrase, relTime } from "../lib/derive";
 import { Avatar, EmptyState } from "./ui";
-
-/** Human phrasing for an activity action verb. */
-function phrase(a: ActivityLog): string {
-  switch (a.action) {
-    case "Created":
-      return "created";
-    case "Completed":
-      return "completed";
-    case "Reopened":
-      return "reopened";
-    case "StatusChanged":
-      return "changed status of";
-    case "PriorityChanged":
-      return "changed priority of";
-    case "AssigneeChanged":
-      return "reassigned";
-    case "Deleted":
-      return "deleted";
-    default:
-      return "updated";
-  }
-}
 
 export function ActivityTimeline({
   projectId,
@@ -76,7 +54,7 @@ export function ActivityTimeline({
                 <span className={isAI ? "actor-ai" : "actor-user"}>
                   {isAI ? "Claude" : "You"}
                 </span>{" "}
-                {phrase(a)} {a.item_type.toLowerCase()}
+                {actionPhrase(a.action)} {a.item_type.toLowerCase()}
                 {isTransition ? (
                   <span className="tl-target">
                     {" "}

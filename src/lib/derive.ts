@@ -52,6 +52,29 @@ export function relTime(iso: string): string {
   return new Date(ts).toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
+/** Human phrasing for an activity action verb. Shared by the item activity
+ *  timeline and the Home AI strip so both read the same. */
+export function actionPhrase(action: string): string {
+  switch (action) {
+    case "Created":
+      return "created";
+    case "Completed":
+      return "completed";
+    case "Reopened":
+      return "reopened";
+    case "StatusChanged":
+      return "changed status of";
+    case "PriorityChanged":
+      return "changed priority of";
+    case "AssigneeChanged":
+      return "reassigned";
+    case "Deleted":
+      return "deleted";
+    default:
+      return "updated";
+  }
+}
+
 export interface ProjectCounts {
   open: number;
   done: number;

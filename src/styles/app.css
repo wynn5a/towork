@@ -464,6 +464,64 @@ button { font-family: inherit; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
 /* ----------------------------------------------------------------
+   Home AI activity strip — Claude's recent actions, led at the top
+   of Home. Restrained, purple-accented (the teammate hue). Reads as a
+   quiet strip, never a hero card; chrome still recedes.
+---------------------------------------------------------------- */
+.ai-strip {
+  display: flex; align-items: flex-start; gap: 11px;
+  padding: 9px 11px; margin-bottom: 18px;
+  border-radius: var(--radius);
+  border: 1px solid color-mix(in srgb, var(--purple) 20%, var(--border));
+  background: color-mix(in srgb, var(--purple) 6%, var(--bg-panel));
+}
+.ai-strip-glyph {
+  display: grid; place-items: center; flex-shrink: 0;
+  width: 22px; height: 22px; margin-top: 1px; border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--purple) 22%, var(--bg-elevated));
+  color: var(--purple);
+}
+.ai-strip-list {
+  flex: 1; min-width: 0; list-style: none; margin: 0; padding: 0;
+  display: flex; flex-direction: column; gap: 1px;
+}
+.ai-strip-entry {
+  width: 100%; display: flex; align-items: center; gap: 10px;
+  padding: 3px 7px; border: 0; background: none; border-radius: var(--radius-sm);
+  font: inherit; color: var(--text-2); text-align: left; cursor: pointer;
+  transition: background-color var(--dur-2) var(--ease), color var(--dur-2) var(--ease);
+}
+.ai-strip-entry:hover:not(:disabled) { background: var(--bg-hover); color: var(--text-1); }
+.ai-strip-entry:disabled { cursor: default; }
+.ai-strip-entry:focus-visible { outline-offset: -2px; }
+.ase-text {
+  flex: 1; min-width: 0; font-size: 12.5px; line-height: 1.5;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.ase-actor { color: var(--purple); font-weight: 500; }
+.ase-id { font-family: var(--mono); font-size: 11.5px; color: var(--text-1); }
+.ai-strip-entry:disabled .ase-id { color: var(--text-3); }
+.ase-time {
+  flex-shrink: 0; font-family: var(--mono); font-size: 10.5px;
+  color: var(--text-4); font-variant-numeric: tabular-nums;
+}
+/* A freshly-arrived live action briefly rings the strip in the teammate hue. */
+.ai-strip.flash { animation: ai-strip-flash 1.6s var(--ease-out); }
+@keyframes ai-strip-flash {
+  0%   { box-shadow: 0 0 0 0 color-mix(in srgb, var(--purple) 38%, transparent); }
+  35%  { box-shadow: 0 0 0 5px color-mix(in srgb, var(--purple) 16%, transparent); }
+  100% { box-shadow: 0 0 0 6px transparent; }
+}
+
+/* Visually hidden, but available to assistive tech — the aria-live region.
+   Not display:none, which would suppress the announcement. */
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%);
+  white-space: nowrap; border: 0;
+}
+
+/* ----------------------------------------------------------------
    Activity timeline
 ---------------------------------------------------------------- */
 .timeline { display: flex; flex-direction: column; position: relative; padding-left: 4px; }
