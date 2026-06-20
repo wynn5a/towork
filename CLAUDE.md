@@ -14,10 +14,11 @@ pnpm tauri dev          # run the desktop app (auto-starts Vite); primary dev lo
 pnpm build              # tsc --noEmit + vite build — the type-check gate (no separate lint/test)
 cd src-tauri && cargo run -- --mcp   # run the MCP server alone over stdio (dev)
 cd src-tauri && cargo build          # compile the Rust backend
+cd src-tauri && cargo test           # run the Rust unit tests (~29, in models/* and db/schema.rs)
 pnpm tauri build        # package installers (needs full icon set incl. .icns/.ico)
 ```
 
-There is **no test suite and no lint step**. Verification = `pnpm build` (TS) + `cargo build` (Rust). Don't invent a `pnpm test`.
+**Verification gate:** `pnpm build` (TS type-check + web build) + `cargo build` + `cargo test`. There are Rust unit tests (in-line `#[cfg(test)]` modules; `db/schema.rs` tests run against an in-memory DB built from the real migrations) but **no JS/TS test suite and no lint step** — don't invent a `pnpm test` or `pnpm lint`.
 
 ## Architecture
 
@@ -36,8 +37,11 @@ There is **no test suite and no lint step**. Verification = `pnpm build` (TS) + 
 
 **Derived, not stored.** Human-facing item IDs like `TOW-3` are computed on the frontend in `src/lib/derive.ts` (`buildSeqMap`) by sorting each project's items by `created_at` — the backend stores no sequence number. Project hues/prefixes are likewise derived from the id/name.
 
+**Schema is one SQL file.** The whole schema is `src-tauri/migrations/001_initial.sql`, applied via `include_str!` in `db/migrations::run_migrations` (run on every connection — GUI and standalone MCP alike). There is no incremental-migration framework yet; schema changes mean editing the SQL and accounting for existing databases.
+
 ## Conventions
 
 - **Design tokens, never hardcoded values.** This is the "Data Buddy" dark design system. Colors/spacing/radii/motion come from CSS custom properties in `src/styles/tokens.css` (`var(--accent)`, `var(--bg-panel)`, `var(--text-1)`, etc.). The accent must stay derivable — tint with `color-mix`/`rgba` off `var(--accent)`. Reference and rationale live in `ux/design-system/` (`DESIGN-SYSTEM.md`, `AGENT-GUIDE.md`); `ux/prototype/` is the original HTML/JS prototype the React app was ported from.
+- **Design context for UI work.** Before designing or reshaping UI, read `docs/PRODUCT.md` (strategic: register `product`, target users, brand personality, anti-references, design principles, WCAG 2.1 AA target) and `docs/DESIGN.md` (the machine-readable Stitch-format token layer). `ux/design-system/` stays canonical for visuals; `docs/DESIGN.md` is derived from it and defers to it on any conflict.
 - **Activity log on every mutation.** Create/update/complete operations write an `ActivityLog` row with the correct actor (User from GUI, AI from MCP). Follow the existing `log_item_changes` pattern (`commands/todos.rs`) which diffs old vs. new and logs per-field changes.
 - New Tauri commands must be registered in the `invoke_handler!` list in `src-tauri/src/lib.rs` *and* given a typed wrapper in `src/lib/tauri.ts`.
