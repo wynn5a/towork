@@ -62,6 +62,9 @@ export function ActivityTimeline({
     <div className="timeline">
       {activity.map((a) => {
         const isAI = a.actor === "AI";
+        const TRANSITIONS = ["PriorityChanged", "StatusChanged", "AssigneeChanged"];
+        const isTransition =
+          TRANSITIONS.includes(a.action) && !!a.old_value && !!a.new_value;
         const target = a.new_value ?? a.old_value ?? "";
         return (
           <div className="tl-entry" key={a.id}>
@@ -74,7 +77,14 @@ export function ActivityTimeline({
                   {isAI ? "Claude" : "You"}
                 </span>{" "}
                 {phrase(a)} {a.item_type.toLowerCase()}
-                {target && <span className="tl-target"> {target}</span>}
+                {isTransition ? (
+                  <span className="tl-target">
+                    {" "}
+                    from {a.old_value} to {a.new_value}
+                  </span>
+                ) : (
+                  target && <span className="tl-target"> {target}</span>
+                )}
               </div>
               <div className="tl-time">{relTime(a.created_at)}</div>
             </div>

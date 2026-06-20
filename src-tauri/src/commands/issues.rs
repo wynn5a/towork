@@ -83,8 +83,8 @@ pub fn update_issue(
 
     if let Some(old) = old {
         log_item_changes(
-            &conn, "Issue", &id, &old.status, &old.priority, &old.assignee, &status, &priority,
-            &assignee, &title, &description,
+            &conn, "Issue", &id, &old.status, &old.priority, &old.assignee, &old.title,
+            old.description.as_deref(), &status, &priority, &assignee, &title, &description,
         )
         .map_err(|e| e.to_string())?;
     }
