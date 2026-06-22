@@ -100,17 +100,19 @@ export function QuickAdd() {
     inputRef.current?.focus();
   }
 
-  /** Long text deserves the full dialog. The typed words go into the
-   *  description (they read more like a note than a title); the title is left
-   *  blank for the user to fill — it stays required to save. */
+  /** Hand the current text off to the full dialog. Short content (≤
+   *  TITLE_HANDOFF_LIMIT) is a title the user wants to keep editing, so it lands
+   *  in the title field with the caret there; longer content reads more like a
+   *  note and goes into the description instead. */
   function handoffToDialog(raw: string) {
     const { kind, title, target } = resolve(raw);
     if (!target) return;
-    ui.openItemModal({
-      kind,
-      projectId: target.id,
-      draft: { description: title || raw, assignee },
-    });
+    const content = title || raw;
+    const draft =
+      content.length <= TITLE_HANDOFF_LIMIT
+        ? { title: content, assignee }
+        : { description: content, assignee };
+    ui.openItemModal({ kind, projectId: target.id, draft });
     setText("");
   }
 
