@@ -6,6 +6,7 @@
 /* Fonts load via <link> in index.html. */
 
 :root {
+  color-scheme: dark;
   /* ---- surfaces (darkest → most elevated) — Linear-exact neutral near-black ---- */
   --bg-base:      #08090a;   /* app shell / page — outermost, darkest */
   --bg-canvas:    #0b0c0e;   /* content wells, table headers, code blocks */
