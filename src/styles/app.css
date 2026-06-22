@@ -16,6 +16,49 @@ html, body {
 button { font-family: inherit; }
 ::selection { background: var(--accent-soft); }
 
+/* ----------------------------------------------------------------
+   Scrollbars — thin, unobtrusive, dark. Native OS bars read as a bright
+   default against the near-black surfaces, so we draw our own from tokens:
+   a transparent track that lets the panel show through, a muted thumb tinted
+   off the hairline border that lifts a step on hover/active, pill-rounded to
+   match the system. ~9px so it never reserves a heavy gutter. Applies app-wide
+   to every scroll container (content, panels, lists, modals, timeline).
+   Firefox/standards get the thin + color fallback. WKWebView (this Tauri
+   webview, macOS) takes the ::-webkit rules below. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+::-webkit-scrollbar {
+  width: 9px;
+  height: 9px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: var(--radius-pill);
+  /* transparent border keeps the thumb inset from the track edges so it reads
+     as a slim pill, not a full-width bar. background-clip stops the fill from
+     painting under that border. */
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  transition: background-color var(--dur-2) var(--ease);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in srgb, var(--text-3) 55%, transparent);
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:active {
+  background: color-mix(in srgb, var(--text-2) 65%, transparent);
+  background-clip: padding-box;
+}
+/* Don't draw the little square where the bars meet. */
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
 /* Linear-signature surface grain: one fixed viewport overlay that blends into
    every surface. soft-light keeps it neutral (lightens highlights, deepens
    shadows) rather than dusting white speckle, killing banding on the near-black
