@@ -92,7 +92,7 @@ export function QuickAdd() {
     const { kind, title, target } = resolve(raw);
     if (!title || !target) return;
     const create = kind === "issue" ? createIssue : createTodo;
-    await create(target.id, title, undefined, undefined, assignee);
+    await create(target.id, title, undefined, undefined, undefined, assignee);
     setText("");
     await reload();
     const label = kind === "issue" ? "Issue added" : "Todo added";

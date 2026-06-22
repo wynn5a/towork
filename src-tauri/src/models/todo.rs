@@ -49,6 +49,7 @@ impl Todo {
         project_id: String,
         title: String,
         description: Option<String>,
+        status: Option<String>,
         priority: Option<String>,
         assignee: Option<Actor>,
     ) -> Self {
@@ -58,7 +59,7 @@ impl Todo {
             project_id,
             title,
             description,
-            status: "Open".to_string(),
+            status: status.unwrap_or_else(|| "Open".to_string()),
             priority: priority.unwrap_or_else(|| "Medium".to_string()),
             assignee: assignee
                 .map(|a| a.as_str().to_string())
@@ -75,7 +76,7 @@ mod tests {
 
     #[test]
     fn new_sets_defaults() {
-        let t = Todo::new("p1".into(), "Buy milk".into(), None, None, None);
+        let t = Todo::new("p1".into(), "Buy milk".into(), None, None, None, None);
         assert_eq!(t.project_id, "p1");
         assert_eq!(t.title, "Buy milk");
         assert_eq!(t.description, None);
@@ -93,19 +94,26 @@ mod tests {
             "p1".into(),
             "Title".into(),
             Some("desc".into()),
+            Some("In Progress".into()),
             Some("High".into()),
             Some(Actor::AI),
         );
         assert_eq!(t.description.as_deref(), Some("desc"));
         assert_eq!(t.priority, "High");
         assert_eq!(t.assignee, "AI");
-        assert_eq!(t.status, "Open"); // always Open on creation
+        assert_eq!(t.status, "In Progress"); // honors requested status on creation
+    }
+
+    #[test]
+    fn new_defaults_status_to_open_when_absent() {
+        let t = Todo::new("p1".into(), "Title".into(), None, None, None, None);
+        assert_eq!(t.status, "Open");
     }
 
     #[test]
     fn new_generates_unique_ids() {
-        let a = Todo::new("p".into(), "a".into(), None, None, None);
-        let b = Todo::new("p".into(), "b".into(), None, None, None);
+        let a = Todo::new("p".into(), "a".into(), None, None, None, None);
+        let b = Todo::new("p".into(), "b".into(), None, None, None, None);
         assert_ne!(a.id, b.id);
         // ids are uuids -> 36 chars.
         assert_eq!(a.id.len(), 36);
@@ -138,7 +146,7 @@ mod tests {
 
     #[test]
     fn serde_round_trip() {
-        let t = Todo::new("p".into(), "title".into(), Some("d".into()), None, None);
+        let t = Todo::new("p".into(), "title".into(), Some("d".into()), None, None, None);
         let json = serde_json::to_string(&t).unwrap();
         let back: Todo = serde_json::from_str(&json).unwrap();
         assert_eq!(back.id, t.id);

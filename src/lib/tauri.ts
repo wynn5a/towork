@@ -36,10 +36,11 @@ export const createTodo = (
   projectId: string,
   title: string,
   description?: string,
+  status?: Status,
   priority?: Priority,
   assignee?: Assignee
 ): Promise<Todo> =>
-  invoke("create_todo", { projectId, title, description, priority, assignee });
+  invoke("create_todo", { projectId, title, description, status, priority, assignee });
 export const updateTodo = (
   id: string,
   fields: {
@@ -67,10 +68,11 @@ export const createIssue = (
   projectId: string,
   title: string,
   description?: string,
+  status?: Status,
   priority?: Priority,
   assignee?: Assignee
 ): Promise<Issue> =>
-  invoke("create_issue", { projectId, title, description, priority, assignee });
+  invoke("create_issue", { projectId, title, description, status, priority, assignee });
 export const updateIssue = (
   id: string,
   fields: {

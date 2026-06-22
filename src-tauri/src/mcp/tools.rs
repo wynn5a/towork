@@ -2,7 +2,7 @@ use rusqlite::Connection;
 use serde_json::{json, Value};
 
 use crate::db::schema;
-use crate::models::{activity::ActivityLog, issue::Issue, todo::Todo, Actor};
+use crate::models::{activity::ActivityLog, issue::Issue, normalize_status, todo::Todo, Actor};
 
 /// JSON-Schema tool definitions advertised to MCP clients.
 pub fn list_tools() -> Value {
@@ -36,6 +36,7 @@ pub fn list_tools() -> Value {
                     "item_type": { "type": "string", "enum": ["Todo", "Issue"] },
                     "title": { "type": "string" },
                     "description": { "type": "string" },
+                    "status": { "type": "string", "enum": ["Open", "In Progress", "Done"] },
                     "priority": { "type": "string", "enum": ["Low", "Medium", "High"] },
                     "assignee": { "type": "string", "enum": ["User", "AI"] }
                 },
@@ -146,6 +147,8 @@ pub fn call_tool(conn: &Connection, name: &str, args: Value) -> Result<Value, St
             let item_type = require(&args, "item_type")?;
             let title = require(&args, "title")?.to_string();
             let description = owned(&args, "description");
+            // Status is optional and defaults to "Open"; reject an invalid value.
+            let status = normalize_status(str_arg(&args, "status"))?;
             let priority = owned(&args, "priority");
             // Assignee defaults to AI but may be set explicitly. The creator,
             // logged on the "Created" entry, is always AI — items made over MCP
@@ -154,13 +157,13 @@ pub fn call_tool(conn: &Connection, name: &str, args: Value) -> Result<Value, St
 
             let value = match item_type {
                 "Todo" => {
-                    let todo = Todo::new(project_id, title, description, priority, Some(actor));
+                    let todo = Todo::new(project_id, title, description, Some(status), priority, Some(actor));
                     schema::insert_todo(conn, &todo).map_err(|e| e.to_string())?;
                     log(conn, "Todo", &todo.id, "Created", Actor::AI, None, Some(todo.title.clone()))?;
                     json!(todo)
                 }
                 "Issue" => {
-                    let issue = Issue::new(project_id, title, description, priority, Some(actor));
+                    let issue = Issue::new(project_id, title, description, Some(status), priority, Some(actor));
                     schema::insert_issue(conn, &issue).map_err(|e| e.to_string())?;
                     log(conn, "Issue", &issue.id, "Created", Actor::AI, None, Some(issue.title.clone()))?;
                     json!(issue)

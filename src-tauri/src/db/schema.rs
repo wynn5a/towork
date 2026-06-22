@@ -539,9 +539,9 @@ mod tests {
     fn deleting_project_cascades_to_todos_and_issues() {
         let conn = test_conn();
         let p = seed_project(&conn);
-        let t = Todo::new(p.id.clone(), "t".into(), None, None, None);
+        let t = Todo::new(p.id.clone(), "t".into(), None, None, None, None);
         insert_todo(&conn, &t).unwrap();
-        let i = Issue::new(p.id.clone(), "i".into(), None, None, None);
+        let i = Issue::new(p.id.clone(), "i".into(), None, None, None, None);
         insert_issue(&conn, &i).unwrap();
 
         delete_project(&conn, &p.id).unwrap();
@@ -556,7 +556,7 @@ mod tests {
     fn todo_insert_query_update_delete() {
         let conn = test_conn();
         let p = seed_project(&conn);
-        let t = Todo::new(p.id.clone(), "Write tests".into(), None, None, None);
+        let t = Todo::new(p.id.clone(), "Write tests".into(), None, None, None, None);
         insert_todo(&conn, &t).unwrap();
 
         let fetched = query_todo(&conn, &t.id).unwrap().unwrap();
@@ -583,6 +583,52 @@ mod tests {
         assert!(query_todo(&conn, &t.id).unwrap().is_none());
     }
 
+    /// Regression: creating an item with status "In Progress" must persist it
+    /// as "In Progress", not silently fall back to "Open". Exercises the real
+    /// migrated schema, so the `CHECK (status IN ...)` constraint is honored.
+    #[test]
+    fn create_with_in_progress_status_persists_for_both_twins() {
+        let conn = test_conn();
+        let p = seed_project(&conn);
+
+        let t = Todo::new(
+            p.id.clone(),
+            "In-progress todo".into(),
+            None,
+            Some("In Progress".into()),
+            None,
+            None,
+        );
+        insert_todo(&conn, &t).unwrap();
+        assert_eq!(query_todo(&conn, &t.id).unwrap().unwrap().status, "In Progress");
+
+        let i = Issue::new(
+            p.id.clone(),
+            "In-progress issue".into(),
+            None,
+            Some("In Progress".into()),
+            None,
+            None,
+        );
+        insert_issue(&conn, &i).unwrap();
+        assert_eq!(query_issue(&conn, &i.id).unwrap().unwrap().status, "In Progress");
+    }
+
+    /// Omitting status on create still defaults to "Open" for both twins.
+    #[test]
+    fn create_without_status_defaults_to_open_for_both_twins() {
+        let conn = test_conn();
+        let p = seed_project(&conn);
+
+        let t = Todo::new(p.id.clone(), "Default todo".into(), None, None, None, None);
+        insert_todo(&conn, &t).unwrap();
+        assert_eq!(query_todo(&conn, &t.id).unwrap().unwrap().status, "Open");
+
+        let i = Issue::new(p.id.clone(), "Default issue".into(), None, None, None, None);
+        insert_issue(&conn, &i).unwrap();
+        assert_eq!(query_issue(&conn, &i.id).unwrap().unwrap().status, "Open");
+    }
+
     #[test]
     fn query_todos_filters() {
         let conn = test_conn();
@@ -591,17 +637,17 @@ mod tests {
 
         insert_todo(
             &conn,
-            &Todo::new(p1.id.clone(), "a".into(), None, Some("High".into()), Some(Actor::AI)),
+            &Todo::new(p1.id.clone(), "a".into(), None, None, Some("High".into()), Some(Actor::AI)),
         )
         .unwrap();
         insert_todo(
             &conn,
-            &Todo::new(p1.id.clone(), "b".into(), None, Some("Low".into()), Some(Actor::User)),
+            &Todo::new(p1.id.clone(), "b".into(), None, None, Some("Low".into()), Some(Actor::User)),
         )
         .unwrap();
         insert_todo(
             &conn,
-            &Todo::new(p2.id.clone(), "c".into(), None, None, None),
+            &Todo::new(p2.id.clone(), "c".into(), None, None, None, None),
         )
         .unwrap();
 
@@ -637,7 +683,7 @@ mod tests {
     fn issue_insert_query_update_delete() {
         let conn = test_conn();
         let p = seed_project(&conn);
-        let i = Issue::new(p.id.clone(), "Bug".into(), Some("boom".into()), None, None);
+        let i = Issue::new(p.id.clone(), "Bug".into(), Some("boom".into()), None, None, None);
         insert_issue(&conn, &i).unwrap();
 
         let fetched = query_issue(&conn, &i.id).unwrap().unwrap();
@@ -656,8 +702,8 @@ mod tests {
         let conn = test_conn();
         let p1 = seed_project(&conn);
         let p2 = seed_project(&conn);
-        insert_issue(&conn, &Issue::new(p1.id.clone(), "x".into(), None, None, None)).unwrap();
-        insert_issue(&conn, &Issue::new(p2.id.clone(), "y".into(), None, None, None)).unwrap();
+        insert_issue(&conn, &Issue::new(p1.id.clone(), "x".into(), None, None, None, None)).unwrap();
+        insert_issue(&conn, &Issue::new(p2.id.clone(), "y".into(), None, None, None, None)).unwrap();
 
         assert_eq!(query_issues(&conn, None, None, None, None).unwrap().len(), 2);
         assert_eq!(
@@ -713,9 +759,9 @@ mod tests {
         let p1 = seed_project(&conn);
         let p2 = seed_project(&conn);
 
-        let t = Todo::new(p1.id.clone(), "t".into(), None, None, None);
+        let t = Todo::new(p1.id.clone(), "t".into(), None, None, None, None);
         insert_todo(&conn, &t).unwrap();
-        let i = Issue::new(p2.id.clone(), "i".into(), None, None, None);
+        let i = Issue::new(p2.id.clone(), "i".into(), None, None, None, None);
         insert_issue(&conn, &i).unwrap();
 
         insert_activity(
@@ -751,7 +797,7 @@ mod tests {
         let p = seed_project(&conn);
 
         // Create (item alive: insert_activity backfills project_id from the row).
-        let t = Todo::new(p.id.clone(), "doomed".into(), None, None, None);
+        let t = Todo::new(p.id.clone(), "doomed".into(), None, None, None, None);
         insert_todo(&conn, &t).unwrap();
         insert_activity(
             &conn,
@@ -786,7 +832,7 @@ mod tests {
     fn insert_activity_backfills_project_from_live_item() {
         let conn = test_conn();
         let p = seed_project(&conn);
-        let t = Todo::new(p.id.clone(), "t".into(), None, None, None);
+        let t = Todo::new(p.id.clone(), "t".into(), None, None, None, None);
         insert_todo(&conn, &t).unwrap();
 
         // No .with_project(): must be resolved from the still-living item.
@@ -810,7 +856,7 @@ mod tests {
         let conn = test_conn();
         let p = seed_project(&conn);
 
-        let t = Todo::new(p.id.clone(), "doomed todo".into(), None, None, None);
+        let t = Todo::new(p.id.clone(), "doomed todo".into(), None, None, None, None);
         insert_todo(&conn, &t).unwrap();
         delete_todo(&conn, &t.id).unwrap();
         insert_activity(
@@ -819,7 +865,7 @@ mod tests {
         )
         .unwrap();
 
-        let i = Issue::new(p.id.clone(), "doomed issue".into(), None, None, None);
+        let i = Issue::new(p.id.clone(), "doomed issue".into(), None, None, None, None);
         insert_issue(&conn, &i).unwrap();
         delete_issue(&conn, &i.id).unwrap();
         insert_activity(
@@ -846,22 +892,22 @@ mod tests {
         let p = seed_project(&conn);
         insert_todo(
             &conn,
-            &Todo::new(p.id.clone(), "Fix Login Bug".into(), None, None, None),
+            &Todo::new(p.id.clone(), "Fix Login Bug".into(), None, None, None, None),
         )
         .unwrap();
         insert_todo(
             &conn,
-            &Todo::new(p.id.clone(), "Other".into(), Some("has login text".into()), None, None),
+            &Todo::new(p.id.clone(), "Other".into(), Some("has login text".into()), None, None, None),
         )
         .unwrap();
         insert_issue(
             &conn,
-            &Issue::new(p.id.clone(), "Unrelated".into(), None, None, None),
+            &Issue::new(p.id.clone(), "Unrelated".into(), None, None, None, None),
         )
         .unwrap();
         insert_issue(
             &conn,
-            &Issue::new(p.id.clone(), "LOGIN crash".into(), None, None, None),
+            &Issue::new(p.id.clone(), "LOGIN crash".into(), None, None, None, None),
         )
         .unwrap();
 
@@ -879,8 +925,8 @@ mod tests {
         let conn = test_conn();
         let p1 = seed_project(&conn);
         let p2 = seed_project(&conn);
-        insert_todo(&conn, &Todo::new(p1.id.clone(), "login p1".into(), None, None, None)).unwrap();
-        insert_todo(&conn, &Todo::new(p2.id.clone(), "login p2".into(), None, None, None)).unwrap();
+        insert_todo(&conn, &Todo::new(p1.id.clone(), "login p1".into(), None, None, None, None)).unwrap();
+        insert_todo(&conn, &Todo::new(p2.id.clone(), "login p2".into(), None, None, None, None)).unwrap();
 
         let (todos, _) = search_items(&conn, "login", Some(&p1.id)).unwrap();
         assert_eq!(todos.len(), 1);

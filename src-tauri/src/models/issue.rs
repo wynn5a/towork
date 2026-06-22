@@ -49,6 +49,7 @@ impl Issue {
         project_id: String,
         title: String,
         description: Option<String>,
+        status: Option<String>,
         priority: Option<String>,
         assignee: Option<Actor>,
     ) -> Self {
@@ -58,7 +59,7 @@ impl Issue {
             project_id,
             title,
             description,
-            status: "Open".to_string(),
+            status: status.unwrap_or_else(|| "Open".to_string()),
             priority: priority.unwrap_or_else(|| "Medium".to_string()),
             assignee: assignee
                 .map(|a| a.as_str().to_string())
@@ -75,7 +76,7 @@ mod tests {
 
     #[test]
     fn new_sets_defaults() {
-        let i = Issue::new("p1".into(), "Crash on launch".into(), None, None, None);
+        let i = Issue::new("p1".into(), "Crash on launch".into(), None, None, None, None);
         assert_eq!(i.project_id, "p1");
         assert_eq!(i.status, "Open");
         assert_eq!(i.priority, "Medium");
@@ -90,12 +91,20 @@ mod tests {
             "p1".into(),
             "Title".into(),
             Some("desc".into()),
+            Some("In Progress".into()),
             Some("Low".into()),
             Some(Actor::AI),
         );
         assert_eq!(i.description.as_deref(), Some("desc"));
         assert_eq!(i.priority, "Low");
         assert_eq!(i.assignee, "AI");
+        assert_eq!(i.status, "In Progress"); // honors requested status on creation
+    }
+
+    #[test]
+    fn new_defaults_status_to_open_when_absent() {
+        let i = Issue::new("p1".into(), "Title".into(), None, None, None, None);
+        assert_eq!(i.status, "Open");
     }
 
     #[test]

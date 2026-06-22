@@ -2,7 +2,7 @@ use tauri::State;
 
 use crate::commands::todos::log_item_changes;
 use crate::db::{schema, DbState};
-use crate::models::{activity::ActivityLog, issue::Issue, Actor};
+use crate::models::{activity::ActivityLog, issue::Issue, normalize_status, Actor};
 
 #[tauri::command]
 pub fn list_issues(
@@ -35,12 +35,14 @@ pub fn create_issue(
     project_id: String,
     title: String,
     description: Option<String>,
+    status: Option<String>,
     priority: Option<String>,
     assignee: Option<String>,
 ) -> Result<Issue, String> {
     let conn = state.conn.lock().map_err(|e| e.to_string())?;
     let actor = Actor::from_str(assignee.as_deref().unwrap_or("User"));
-    let issue = Issue::new(project_id, title, description, priority, Some(actor));
+    let status = normalize_status(status.as_deref())?;
+    let issue = Issue::new(project_id, title, description, Some(status), priority, Some(actor));
     schema::insert_issue(&conn, &issue).map_err(|e| e.to_string())?;
 
     // The creator is the GUI user, even when the item is *assigned* to AI —

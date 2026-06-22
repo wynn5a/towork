@@ -91,7 +91,7 @@ export function ItemModal({
       onClose();
     } else {
       const create = isIssue ? createIssue : createTodo;
-      await create(config.projectId, t, desc.trim() || undefined, priority, assignee);
+      await create(config.projectId, t, desc.trim() || undefined, status, priority, assignee);
       toast(isIssue ? "Issue created" : "Todo created", t, "green");
       await reload();
       if (createMore) resetDraft();

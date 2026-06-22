@@ -3,6 +3,23 @@ pub mod issue;
 pub mod project;
 pub mod todo;
 
+/// The statuses an item may have. The DB `CHECK` constraint mirrors this set.
+pub const ITEM_STATUSES: [&str; 3] = ["Open", "In Progress", "Done"];
+
+/// Normalize a caller-supplied status into the allowed set, defaulting to
+/// "Open" when none is given. Returns `Err` for a non-empty but invalid value
+/// so a bad status is rejected rather than silently inserted (and then
+/// rejected by the DB `CHECK` with an opaque error).
+pub fn normalize_status(status: Option<&str>) -> Result<String, String> {
+    match status {
+        None => Ok("Open".to_string()),
+        Some(s) if ITEM_STATUSES.contains(&s) => Ok(s.to_string()),
+        Some(s) => Err(format!(
+            "invalid status: {s:?} (expected one of Open, In Progress, Done)"
+        )),
+    }
+}
+
 #[derive(Debug, Clone, Copy, serde::Serialize, serde::Deserialize, PartialEq)]
 pub enum Actor {
     User,
@@ -28,6 +45,25 @@ impl Actor {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn normalize_status_defaults_to_open() {
+        assert_eq!(normalize_status(None).unwrap(), "Open");
+    }
+
+    #[test]
+    fn normalize_status_accepts_allowed_values() {
+        for s in ITEM_STATUSES {
+            assert_eq!(normalize_status(Some(s)).unwrap(), s);
+        }
+    }
+
+    #[test]
+    fn normalize_status_rejects_invalid() {
+        assert!(normalize_status(Some("in progress")).is_err()); // case-sensitive
+        assert!(normalize_status(Some("Bogus")).is_err());
+        assert!(normalize_status(Some("")).is_err());
+    }
 
     #[test]
     fn actor_as_str() {

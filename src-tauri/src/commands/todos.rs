@@ -1,7 +1,7 @@
 use tauri::State;
 
 use crate::db::{schema, DbState};
-use crate::models::{activity::ActivityLog, todo::Todo, Actor};
+use crate::models::{activity::ActivityLog, normalize_status, todo::Todo, Actor};
 
 #[tauri::command]
 pub fn list_todos(
@@ -34,12 +34,14 @@ pub fn create_todo(
     project_id: String,
     title: String,
     description: Option<String>,
+    status: Option<String>,
     priority: Option<String>,
     assignee: Option<String>,
 ) -> Result<Todo, String> {
     let conn = state.conn.lock().map_err(|e| e.to_string())?;
     let actor = Actor::from_str(assignee.as_deref().unwrap_or("User"));
-    let todo = Todo::new(project_id, title, description, priority, Some(actor));
+    let status = normalize_status(status.as_deref())?;
+    let todo = Todo::new(project_id, title, description, Some(status), priority, Some(actor));
     schema::insert_todo(&conn, &todo).map_err(|e| e.to_string())?;
 
     // The creator is the GUI user, even when the item is *assigned* to AI —
