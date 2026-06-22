@@ -500,9 +500,16 @@ body::before {
    green. The Done rule below sweeps the offset in. */
 .item-check svg path { stroke-dasharray: 24; }
 .item-check:hover { border-color: var(--green); }
+/* In Progress: a half-filled disc — the conventional "half-pie" progress
+   metaphor (empty Open ring → half fill → full Done). The conic-gradient fills
+   the leading 180° wedge with accent; an inset radius keeps a thin gap inside
+   the ring so the wedge reads as fill, not a second border. Tinted off
+   --accent only, no hardcoded colour. */
 .item-row.in-progress .item-check {
   border-color: var(--accent);
-  background: radial-gradient(circle, var(--accent) 0 4px, transparent 4px);
+  background:
+    conic-gradient(var(--accent) 0 180deg, transparent 180deg 360deg) content-box;
+  padding: 2.5px;
 }
 .item-row.done .item-check { background: var(--green); border-color: var(--green); color: #08130b; }
 
