@@ -33,6 +33,8 @@ export interface ActivityLog {
   id: string;
   item_type: "Todo" | "Issue";
   item_id: string;
+  /** Owning project; survives item deletion so the project feed keeps the row. */
+  project_id: string | null;
   action: string;
   actor: Assignee;
   old_value: string | null;

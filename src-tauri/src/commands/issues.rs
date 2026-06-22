@@ -52,7 +52,8 @@ pub fn create_issue(
         Actor::User,
         None,
         Some(issue.title.clone()),
-    );
+    )
+    .with_project(issue.project_id.clone());
     schema::insert_activity(&conn, &activity).map_err(|e| e.to_string())?;
     Ok(issue)
 }
@@ -111,13 +112,18 @@ pub fn complete_issue(state: State<'_, DbState>, id: String) -> Result<(), Strin
 #[tauri::command]
 pub fn delete_issue(state: State<'_, DbState>, id: String) -> Result<(), String> {
     let conn = state.conn.lock().map_err(|e| e.to_string())?;
-    // Capture the title before deleting so the activity entry is meaningful.
-    // `activity_log.item_id` has no FK to `issues`, so the row survives the delete.
-    let title = schema::query_issue(&conn, &id)
-        .map_err(|e| e.to_string())?
-        .map(|i| i.title);
+    // Capture the title and owning project before deleting so the activity entry
+    // is meaningful and stays project-scoped. `activity_log.item_id` has no FK to
+    // `issues`, so the row survives the delete — but the item's `project_id` would
+    // be unrecoverable afterwards, so we stamp it onto the activity here.
+    let existing = schema::query_issue(&conn, &id).map_err(|e| e.to_string())?;
+    let title = existing.as_ref().map(|i| i.title.clone());
+    let project_id = existing.map(|i| i.project_id);
     schema::delete_issue(&conn, &id).map_err(|e| e.to_string())?;
-    let activity = ActivityLog::new("Issue".into(), id, "Deleted".into(), Actor::User, None, title);
+    let mut activity = ActivityLog::new("Issue".into(), id, "Deleted".into(), Actor::User, None, title);
+    if let Some(pid) = project_id {
+        activity = activity.with_project(pid);
+    }
     schema::insert_activity(&conn, &activity).map_err(|e| e.to_string())?;
     Ok(())
 }

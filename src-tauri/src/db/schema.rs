@@ -354,12 +354,27 @@ pub fn delete_issue(conn: &rusqlite::Connection, id: &str) -> anyhow::Result<()>
 /* ---------------------------- activity log -------------------------- */
 
 pub fn insert_activity(conn: &rusqlite::Connection, activity: &ActivityLog) -> anyhow::Result<()> {
+    // Resolve the owning project so the row stays project-scoped even after the
+    // item is deleted. The caller sets `project_id` when it's known up front
+    // (Created/Deleted — for deletes the item is already gone). Otherwise we
+    // look it up from the still-living item (Updated/Completed/etc.).
+    let project_id: Option<String> = match &activity.project_id {
+        Some(pid) => Some(pid.clone()),
+        None => {
+            let table = if activity.item_type == "Issue" { "issues" } else { "todos" };
+            let mut stmt =
+                conn.prepare(&format!("SELECT project_id FROM {table} WHERE id = ?1"))?;
+            let mut rows = stmt.query_map(params![activity.item_id], |row| row.get::<_, String>(0))?;
+            rows.next().and_then(|r| r.ok())
+        }
+    };
     conn.execute(
-        "INSERT INTO activity_log (id, item_type, item_id, action, actor, old_value, new_value, created_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+        "INSERT INTO activity_log (id, item_type, item_id, project_id, action, actor, old_value, new_value, created_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
         params![
             activity.id,
             activity.item_type,
             activity.item_id,
+            project_id,
             activity.action,
             activity.actor,
             activity.old_value,
@@ -377,7 +392,7 @@ pub fn query_activity(
     limit: Option<i64>,
 ) -> anyhow::Result<Vec<ActivityLog>> {
     let mut query = String::from(
-        "SELECT id, item_type, item_id, action, actor, old_value, new_value, created_at FROM activity_log WHERE 1=1",
+        "SELECT id, item_type, item_id, project_id, action, actor, old_value, new_value, created_at FROM activity_log WHERE 1=1",
     );
     let mut args: Vec<Box<dyn rusqlite::types::ToSql>> = Vec::new();
     if let Some(iid) = item_id {
@@ -404,39 +419,42 @@ pub fn query_activity(
             id: row.get(0)?,
             item_type: row.get(1)?,
             item_id: row.get(2)?,
-            action: row.get(3)?,
-            actor: row.get(4)?,
-            old_value: row.get(5)?,
-            new_value: row.get(6)?,
-            created_at: row.get(7)?,
+            project_id: row.get(3)?,
+            action: row.get(4)?,
+            actor: row.get(5)?,
+            old_value: row.get(6)?,
+            new_value: row.get(7)?,
+            created_at: row.get(8)?,
         })
     })?;
     Ok(rows.filter_map(|r| r.ok()).map(ActivityLog::from).collect())
 }
 
-/// Project-scoped activity: rows whose `item_id` belongs to a todo/issue in
-/// the given project. Used by the project Activity tab and the MCP server.
+/// Project-scoped activity: rows whose denormalised `project_id` is the given
+/// project. Used by the project Activity tab and the MCP server. Reading the
+/// stored `project_id` (rather than joining back to `todos`/`issues`) keeps a
+/// deleted item's Created/Deleted history in the feed.
 pub fn query_activity_for_project(
     conn: &rusqlite::Connection,
     project_id: &str,
 ) -> anyhow::Result<Vec<ActivityLog>> {
     let mut stmt = conn.prepare(
-        "SELECT a.id, a.item_type, a.item_id, a.action, a.actor, a.old_value, a.new_value, a.created_at \
-         FROM activity_log a \
-         WHERE a.item_id IN (SELECT id FROM todos WHERE project_id = ?1) \
-            OR a.item_id IN (SELECT id FROM issues WHERE project_id = ?1) \
-         ORDER BY a.created_at DESC",
+        "SELECT id, item_type, item_id, project_id, action, actor, old_value, new_value, created_at \
+         FROM activity_log \
+         WHERE project_id = ?1 \
+         ORDER BY created_at DESC",
     )?;
     let rows = stmt.query_map(params![project_id], |row| {
         Ok(ActivityLogRow {
             id: row.get(0)?,
             item_type: row.get(1)?,
             item_id: row.get(2)?,
-            action: row.get(3)?,
-            actor: row.get(4)?,
-            old_value: row.get(5)?,
-            new_value: row.get(6)?,
-            created_at: row.get(7)?,
+            project_id: row.get(3)?,
+            action: row.get(4)?,
+            actor: row.get(5)?,
+            old_value: row.get(6)?,
+            new_value: row.get(7)?,
+            created_at: row.get(8)?,
         })
     })?;
     Ok(rows.filter_map(|r| r.ok()).map(ActivityLog::from).collect())
@@ -719,6 +737,69 @@ mod tests {
 
         assert_eq!(query_activity_for_project(&conn, &p1.id).unwrap().len(), 1);
         assert_eq!(query_activity_for_project(&conn, &p2.id).unwrap().len(), 1);
+    }
+
+    /// Regression: creating an item then deleting it must leave BOTH the Created
+    /// and Deleted rows in the project's activity feed. Previously the feed
+    /// joined back to `todos`/`issues` to find a row's project, so a deleted
+    /// item's history vanished from the feed (the reported bug). The denormalised
+    /// `project_id` — set up front on Created, stamped onto Deleted before the
+    /// row is gone — keeps both rows project-scoped.
+    #[test]
+    fn project_activity_survives_item_deletion() {
+        let conn = test_conn();
+        let p = seed_project(&conn);
+
+        // Create (item alive: insert_activity backfills project_id from the row).
+        let t = Todo::new(p.id.clone(), "doomed".into(), None, None, None);
+        insert_todo(&conn, &t).unwrap();
+        insert_activity(
+            &conn,
+            &ActivityLog::new("Todo".into(), t.id.clone(), "Created".into(), Actor::User, None, Some(t.title.clone()))
+                .with_project(t.project_id.clone()),
+        )
+        .unwrap();
+
+        // Delete: stamp project_id onto the Deleted row before the item is gone.
+        delete_todo(&conn, &t.id).unwrap();
+        insert_activity(
+            &conn,
+            &ActivityLog::new("Todo".into(), t.id.clone(), "Deleted".into(), Actor::User, None, Some(t.title.clone()))
+                .with_project(p.id.clone()),
+        )
+        .unwrap();
+
+        let acts = query_activity_for_project(&conn, &p.id).unwrap();
+        assert_eq!(acts.len(), 2, "both Created and Deleted must remain in the feed");
+        // Newest-first ordering.
+        assert_eq!(acts[0].action, "Deleted");
+        assert_eq!(acts[1].action, "Created");
+        // The deleted row still names the item via its stored title.
+        assert_eq!(acts[0].new_value.as_deref(), Some("doomed"));
+        assert_eq!(acts[0].project_id.as_deref(), Some(p.id.as_str()));
+    }
+
+    /// `insert_activity` backfills `project_id` from the live item when the
+    /// caller didn't supply one (the Updated/Completed path), so those rows are
+    /// project-scoped too without threading project_id through every call site.
+    #[test]
+    fn insert_activity_backfills_project_from_live_item() {
+        let conn = test_conn();
+        let p = seed_project(&conn);
+        let t = Todo::new(p.id.clone(), "t".into(), None, None, None);
+        insert_todo(&conn, &t).unwrap();
+
+        // No .with_project(): must be resolved from the still-living item.
+        insert_activity(
+            &conn,
+            &ActivityLog::new("Todo".into(), t.id.clone(), "Completed".into(), Actor::User, Some("Open".into()), Some("Done".into())),
+        )
+        .unwrap();
+
+        let acts = query_activity_for_project(&conn, &p.id).unwrap();
+        assert_eq!(acts.len(), 1);
+        assert_eq!(acts[0].action, "Completed");
+        assert_eq!(acts[0].project_id.as_deref(), Some(p.id.as_str()));
     }
 
     /// `activity_log.item_id` has no FK to `todos`/`issues`, so a `Deleted`

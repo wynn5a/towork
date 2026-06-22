@@ -37,6 +37,10 @@ CREATE TABLE IF NOT EXISTS activity_log (
     id TEXT PRIMARY KEY,
     item_type TEXT NOT NULL CHECK (item_type IN ('Todo', 'Issue')),
     item_id TEXT NOT NULL,
+    -- Denormalised owning project so activity stays project-scoped even after
+    -- the item is deleted (the item row, and thus its project_id, is gone).
+    -- Nullable for rows that predate this column / can't be resolved.
+    project_id TEXT,
     action TEXT NOT NULL CHECK (action IN ('Created', 'StatusChanged', 'PriorityChanged', 'AssigneeChanged', 'Updated', 'Completed', 'Deleted', 'Reopened')),
     actor TEXT NOT NULL CHECK (actor IN ('User', 'AI')),
     old_value TEXT,
@@ -52,3 +56,7 @@ CREATE INDEX IF NOT EXISTS idx_issues_status ON issues(status);
 CREATE INDEX IF NOT EXISTS idx_issues_assignee ON issues(assignee);
 CREATE INDEX IF NOT EXISTS idx_activity_log_item ON activity_log(item_type, item_id);
 CREATE INDEX IF NOT EXISTS idx_activity_log_created ON activity_log(created_at);
+-- idx_activity_log_project is created in migrations.rs::ensure_activity_log_has_project_id,
+-- after the project_id column is guaranteed to exist (it can't be created here
+-- because `CREATE TABLE IF NOT EXISTS` leaves a pre-existing activity_log without
+-- the column, and the index would then reference a missing column).

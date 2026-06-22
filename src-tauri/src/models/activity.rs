@@ -7,6 +7,11 @@ pub struct ActivityLog {
     pub id: String,
     pub item_type: String,
     pub item_id: String,
+    /// Owning project, denormalised so the row stays project-scoped after the
+    /// item is deleted. `None` when unknown (resolved at insert time from the
+    /// live item for non-delete actions; set explicitly for deletes).
+    #[serde(default)]
+    pub project_id: Option<String>,
     pub action: String,
     pub actor: String,
     pub old_value: Option<String>,
@@ -19,6 +24,7 @@ pub struct ActivityLogRow {
     pub id: String,
     pub item_type: String,
     pub item_id: String,
+    pub project_id: Option<String>,
     pub action: String,
     pub actor: String,
     pub old_value: Option<String>,
@@ -32,6 +38,7 @@ impl From<ActivityLogRow> for ActivityLog {
             id: row.id,
             item_type: row.item_type,
             item_id: row.item_id,
+            project_id: row.project_id,
             action: row.action,
             actor: row.actor,
             old_value: row.old_value,
@@ -54,12 +61,21 @@ impl ActivityLog {
             id: uuid::Uuid::new_v4().to_string(),
             item_type,
             item_id,
+            project_id: None,
             action,
             actor: actor.as_str().to_string(),
             old_value,
             new_value,
             created_at: chrono::Utc::now().to_rfc3339(),
         }
+    }
+
+    /// Attach the owning project. Used for Created/Deleted records where the
+    /// project is known at the call site (and, for deletes, no longer
+    /// resolvable from the now-removed item).
+    pub fn with_project(mut self, project_id: impl Into<String>) -> Self {
+        self.project_id = Some(project_id.into());
+        self
     }
 }
 
@@ -108,6 +124,7 @@ mod tests {
             id: "id".into(),
             item_type: "Todo".into(),
             item_id: "iid".into(),
+            project_id: Some("p1".into()),
             action: "Completed".into(),
             actor: "AI".into(),
             old_value: None,
