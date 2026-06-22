@@ -76,6 +76,21 @@ export function actionPhrase(action: string): string {
   }
 }
 
+/** Which field a field-change action refers to, for the "changed <field> from
+ *  X to Y" phrasing. Returns null for non-field-change actions. */
+export function changedField(action: string): "status" | "priority" | "assignee" | null {
+  switch (action) {
+    case "StatusChanged":
+      return "status";
+    case "PriorityChanged":
+      return "priority";
+    case "AssigneeChanged":
+      return "assignee";
+    default:
+      return null;
+  }
+}
+
 export interface ProjectCounts {
   open: number;
   done: number;
