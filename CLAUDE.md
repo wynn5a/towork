@@ -11,14 +11,15 @@ Towork is a Tauri 2 desktop task manager where **AI is a first-class teammate**:
 ```bash
 pnpm install
 pnpm tauri dev          # run the desktop app (auto-starts Vite); primary dev loop
-pnpm build              # tsc --noEmit + vite build — the type-check gate (no separate lint/test)
+pnpm build              # tsc --noEmit + vite build — the type-check gate (no lint step)
+pnpm test               # Vitest + React Testing Library suite (jsdom); pnpm test:watch to watch
 cd src-tauri && cargo run -- --mcp   # run the MCP server alone over stdio (dev)
 cd src-tauri && cargo build          # compile the Rust backend
 cd src-tauri && cargo test           # run the Rust unit tests (~29, in models/* and db/schema.rs)
 pnpm tauri build        # package installers (needs full icon set incl. .icns/.ico)
 ```
 
-**Verification gate:** `pnpm build` (TS type-check + web build) + `cargo build` + `cargo test`. There are Rust unit tests (in-line `#[cfg(test)]` modules; `db/schema.rs` tests run against an in-memory DB built from the real migrations) but **no JS/TS test suite and no lint step** — don't invent a `pnpm test` or `pnpm lint`.
+**Verification gate:** `pnpm build` (TS type-check + web build) + `pnpm test` (Vitest + React Testing Library, jsdom) + `cargo build` + `cargo test`. JS/TS tests are colocated `*.test.tsx` files (e.g. `src/components/ErrorBoundary.test.tsx`); the Vitest setup lives in `vite.config.ts` (`test` block) and `src/test/setup.ts`. Rust tests are in-line `#[cfg(test)]` modules (`db/schema.rs` tests run against an in-memory DB built from the real migrations). There is still **no lint step** — don't invent a `pnpm lint`.
 
 ## Architecture
 
