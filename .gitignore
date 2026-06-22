@@ -157,6 +157,7 @@ vite.config.ts.timestamp-*
 # Claude Code worktrees (isolated per-session copies) and personal settings
 .worktrees/
 .claude/settings.local.json
+.claude/worktrees/*
 
 # Impeccable skill critique reports (generated analysis artifacts)
 .impeccable/critique/
