@@ -772,7 +772,7 @@ textarea.input { resize: vertical; min-height: 64px; line-height: 1.55; }
 .idlg-context { font-size: 13.5px; font-weight: 500; color: var(--text-1); letter-spacing: -0.01em; }
 .idlg-head-actions { margin-left: auto; display: flex; gap: 2px; }
 
-.idlg-body { padding: 12px 18px 4px; display: flex; flex-direction: column; }
+.idlg-body { padding: 12px 18px 4px; display: flex; flex-direction: column; min-height: 0; overflow-y: auto; }
 .idlg-title {
   border: none; outline: none; background: transparent; color: var(--text-1);
   font-family: inherit; font-size: 21px; font-weight: 600; letter-spacing: -0.022em;
@@ -781,7 +781,10 @@ textarea.input { resize: vertical; min-height: 64px; line-height: 1.55; }
 .idlg-title::placeholder { color: var(--text-4); }
 .idlg-desc {
   border: none; outline: none; background: transparent; color: var(--text-2);
-  font-family: inherit; font-size: 14px; line-height: 1.55; resize: none; min-height: 76px; padding: 4px 0;
+  font-family: inherit; font-size: 14px; line-height: 1.55; resize: none; padding: 4px 0;
+  /* Auto-grows to fit content (set inline by ItemModal); bounded so a very long
+     note scrolls inside the textarea rather than pushing the dialog off-screen. */
+  min-height: 76px; max-height: 42vh; overflow-y: auto;
 }
 .idlg-desc::placeholder { color: var(--text-4); }
 

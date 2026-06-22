@@ -66,6 +66,16 @@ export function ItemModal({
     el.setSelectionRange(len, len);
   }, []);
 
+  // Auto-grow the description to fit its content (capped by the CSS max-height,
+  // past which it scrolls internally). Runs on mount — including with existing
+  // long content or a quick-add prefill — and on every edit.
+  useEffect(() => {
+    const el = descRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight}px`;
+  }, [desc]);
+
   const kind = existing?.kind ?? config.kind;
   const isIssue = kind === "issue";
   const crumb = existing ? seqId(existing.id) : `New ${kind}`;
