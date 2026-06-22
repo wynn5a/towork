@@ -111,5 +111,13 @@ pub fn complete_issue(state: State<'_, DbState>, id: String) -> Result<(), Strin
 #[tauri::command]
 pub fn delete_issue(state: State<'_, DbState>, id: String) -> Result<(), String> {
     let conn = state.conn.lock().map_err(|e| e.to_string())?;
-    schema::delete_issue(&conn, &id).map_err(|e| e.to_string())
+    // Capture the title before deleting so the activity entry is meaningful.
+    // `activity_log.item_id` has no FK to `issues`, so the row survives the delete.
+    let title = schema::query_issue(&conn, &id)
+        .map_err(|e| e.to_string())?
+        .map(|i| i.title);
+    schema::delete_issue(&conn, &id).map_err(|e| e.to_string())?;
+    let activity = ActivityLog::new("Issue".into(), id, "Deleted".into(), Actor::User, None, title);
+    schema::insert_activity(&conn, &activity).map_err(|e| e.to_string())?;
+    Ok(())
 }

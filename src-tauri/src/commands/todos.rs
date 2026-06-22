@@ -110,7 +110,15 @@ pub fn complete_todo(state: State<'_, DbState>, id: String) -> Result<(), String
 #[tauri::command]
 pub fn delete_todo(state: State<'_, DbState>, id: String) -> Result<(), String> {
     let conn = state.conn.lock().map_err(|e| e.to_string())?;
-    schema::delete_todo(&conn, &id).map_err(|e| e.to_string())
+    // Capture the title before deleting so the activity entry is meaningful.
+    // `activity_log.item_id` has no FK to `todos`, so the row survives the delete.
+    let title = schema::query_todo(&conn, &id)
+        .map_err(|e| e.to_string())?
+        .map(|t| t.title);
+    schema::delete_todo(&conn, &id).map_err(|e| e.to_string())?;
+    let activity = ActivityLog::new("Todo".into(), id, "Deleted".into(), Actor::User, None, title);
+    schema::insert_activity(&conn, &activity).map_err(|e| e.to_string())?;
+    Ok(())
 }
 
 /// Shared change-logging used by both todo and issue updates. `User` is the

@@ -721,6 +721,42 @@ mod tests {
         assert_eq!(query_activity_for_project(&conn, &p2.id).unwrap().len(), 1);
     }
 
+    /// `activity_log.item_id` has no FK to `todos`/`issues`, so a `Deleted`
+    /// activity row recorded for an item must survive that item's deletion
+    /// (foreign keys are ON in `test_conn`, matching `db::init_db`).
+    #[test]
+    fn delete_activity_survives_item_deletion() {
+        let conn = test_conn();
+        let p = seed_project(&conn);
+
+        let t = Todo::new(p.id.clone(), "doomed todo".into(), None, None, None);
+        insert_todo(&conn, &t).unwrap();
+        delete_todo(&conn, &t.id).unwrap();
+        insert_activity(
+            &conn,
+            &ActivityLog::new("Todo".into(), t.id.clone(), "Deleted".into(), Actor::User, None, Some(t.title.clone())),
+        )
+        .unwrap();
+
+        let i = Issue::new(p.id.clone(), "doomed issue".into(), None, None, None);
+        insert_issue(&conn, &i).unwrap();
+        delete_issue(&conn, &i.id).unwrap();
+        insert_activity(
+            &conn,
+            &ActivityLog::new("Issue".into(), i.id.clone(), "Deleted".into(), Actor::AI, None, Some(i.title.clone())),
+        )
+        .unwrap();
+
+        let todo_acts = query_activity(&conn, Some(&t.id), None, None).unwrap();
+        assert_eq!(todo_acts.len(), 1);
+        assert_eq!(todo_acts[0].action, "Deleted");
+        assert_eq!(todo_acts[0].new_value.as_deref(), Some("doomed todo"));
+
+        let issue_acts = query_activity(&conn, Some(&i.id), None, None).unwrap();
+        assert_eq!(issue_acts.len(), 1);
+        assert_eq!(issue_acts[0].action, "Deleted");
+    }
+
     /* ----------------------------- search --------------------------- */
 
     #[test]
