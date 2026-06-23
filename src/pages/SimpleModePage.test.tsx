@@ -21,6 +21,16 @@ const TODO: Todo = {
   updated_at: "2024-01-01T00:00:00Z",
 };
 
+// An In Progress todo — Simple Mode must keep it visible (only Done is hidden),
+// so advancing a row Open → In Progress doesn't make it vanish.
+const IN_PROGRESS_TODO: Todo = {
+  ...TODO,
+  id: "t-ip",
+  title: "Already in progress",
+  status: "In Progress",
+  priority: "Medium",
+};
+
 // Mock the Tauri IPC layer. updateTodo / completeTodo / createTodo are spies so
 // the test can assert which one Enter fired. The store reloads after each
 // mutation, so its list* readers return whatever `currentTodos` holds at call
@@ -161,5 +171,45 @@ describe("SimpleModePage list navigation reachable from default focus", () => {
     });
     expect(completeTodo).not.toHaveBeenCalled();
     expect(updateTodo).not.toHaveBeenCalled();
+  });
+});
+
+describe("SimpleModePage shows In Progress items alongside Open ones", () => {
+  beforeEach(() => {
+    // Both an Open and an In Progress todo present — Simple Mode hides only Done.
+    currentTodos = [TODO, IN_PROGRESS_TODO];
+    updateTodo.mockClear();
+    completeTodo.mockClear();
+    createTodo.mockClear();
+    vi.spyOn(console, "error").mockImplementation(() => {});
+  });
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("renders BOTH Open and In Progress items in the list", async () => {
+    renderPage();
+
+    // The Open item still surfaces …
+    expect(await screen.findByText("Existing todo")).toBeInTheDocument();
+    // … and so does the In Progress one (the whole point — it must not vanish).
+    expect(await screen.findByText("Already in progress")).toBeInTheDocument();
+  });
+
+  it("gives the In Progress row a status cue that the Open row does not have", async () => {
+    renderPage();
+
+    const openRow = (await screen.findByText("Existing todo")).closest(".simple-row");
+    const ipRow = (await screen.findByText("Already in progress")).closest(".simple-row");
+
+    // The In Progress row carries the `in-progress` modifier (which drives the
+    // accent half-filled check) and an explicit "In Progress" status label; the
+    // Open row stays bare.
+    expect(ipRow?.className).toContain("in-progress");
+    expect(openRow?.className).not.toContain("in-progress");
+
+    expect(ipRow?.querySelector(".s-status")).not.toBeNull();
+    expect(ipRow?.textContent).toContain("In Progress");
+    expect(openRow?.querySelector(".s-status")).toBeNull();
   });
 });

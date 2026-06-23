@@ -91,6 +91,22 @@ button.side-foot:hover .mcp-copy { color: var(--text-2); }
 .simple-row .s-kind { display: grid; place-items: center; flex-shrink: 0; }
 .simple-row .s-kind svg { display: block; }
 .simple-row .s-title { flex: 1; min-width: 0; font-size: 14.5px; color: var(--text-1); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* In Progress cue — mirrors ItemRow's vocabulary: a small accent dot + label,
+   tinted off --accent only. Distinguishes In Progress rows from Open without
+   cluttering the otherwise-bare list. */
+.simple-row .s-status {
+  display: inline-flex; align-items: center; gap: 5px; flex-shrink: 0;
+  font-size: 11px; font-weight: 500; letter-spacing: 0.01em; color: var(--accent);
+}
+.simple-row .s-status .pdot { width: 5px; height: 5px; border-radius: 99px; flex-shrink: 0; }
+/* In Progress check — the same accent half-filled disc ItemRow uses (empty
+   Open ring → half fill → full Done). */
+.simple-row.in-progress .item-check {
+  border-color: var(--accent);
+  background:
+    conic-gradient(var(--accent) 0 180deg, transparent 180deg 360deg) content-box;
+  padding: 2.5px;
+}
 .simple-row .s-proj { font-size: 11px; color: var(--text-4); font-family: var(--mono); flex-shrink: 0; }
 .simple-foot {
   display: flex; gap: 18px; justify-content: center;

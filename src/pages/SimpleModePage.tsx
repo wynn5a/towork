@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useStore } from "../lib/store";
 import { completeIssue, completeTodo, createIssue, createTodo } from "../lib/tauri";
 import type { Item, ItemKind } from "../lib/types";
-import { PRIORITY_META, PRIORITY_RANK } from "../lib/derive";
+import { PRIORITY_META, PRIORITY_RANK, STATUS_META } from "../lib/derive";
 import { useDoubleControl } from "../lib/useDoubleControl";
 import { useItemActions } from "../lib/actions";
 import { useUI } from "../lib/ui";
@@ -15,8 +15,11 @@ import { enterSimpleWindow, exitSimpleWindow } from "../lib/window";
 const TITLE_HANDOFF_LIMIT = 50;
 
 /**
- * Simple Mode — a distraction-free flat list of open todos and issues across all
- * projects, sorted High → Low.
+ * Simple Mode — a distraction-free flat list of the not-yet-done todos and
+ * issues across all projects, sorted High → Low. Both Open and In Progress
+ * items show (only Done is hidden) so advancing a row Open → In Progress via
+ * Enter keeps it visible rather than making it vanish; In Progress rows carry a
+ * status cue (the accent half-filled check + dot) to set them apart from Open.
  *
  * Keyboard model (Enter is disambiguated by whether a row is *actively* selected):
  *   - ↑/↓ establish/move the active selection and work from anywhere — they're
@@ -47,6 +50,10 @@ export function SimpleModePage() {
   const exit = () => navigate("/");
   useDoubleControl(exit);
 
+  // Everything not yet Done — i.e. both Open AND In Progress. Keeping In
+  // Progress in view is what stops a row from vanishing the moment Enter
+  // advances it Open → In Progress. Done stays hidden (Simple Mode is a focused
+  // "what's left" view).
   const openItems = items
     .filter((i) => i.status !== "Done")
     .sort((a, b) => PRIORITY_RANK[a.priority] - PRIORITY_RANK[b.priority]);
@@ -231,10 +238,15 @@ export function SimpleModePage() {
         ) : (
           openItems.map((t, i) => {
             const project = projectById(t.project_id);
+            // In Progress rows carry the same accent vocabulary used elsewhere:
+            // the `in-progress` class half-fills the check (matching ItemRow) and
+            // a small accent dot before the title sets them apart from Open —
+            // Open rows stay bare to keep the list clean.
+            const inProgress = t.status === "In Progress";
             return (
               <div
                 key={t.id}
-                className={`simple-row${i === sel ? " sel" : ""}`}
+                className={`simple-row${i === sel ? " sel" : ""}${inProgress ? " in-progress" : ""}`}
                 onMouseEnter={() => setSel(i)}
                 onClick={() =>
                   ui.openItemModal({ kind: t.kind, projectId: t.project_id, itemId: t.id })
@@ -257,6 +269,19 @@ export function SimpleModePage() {
                   <Icon name={t.kind} size={14} stroke="var(--text-3)" />
                 </span>
                 <span className="s-title">{t.title}</span>
+                {inProgress && (
+                  <span
+                    className="s-status"
+                    title={STATUS_META["In Progress"].label}
+                    aria-label={STATUS_META["In Progress"].label}
+                  >
+                    <span
+                      className="pdot"
+                      style={{ background: STATUS_META["In Progress"].hue }}
+                    />
+                    {STATUS_META["In Progress"].label}
+                  </span>
+                )}
                 {project && <span className="s-proj">{project.name}</span>}
                 <Avatar assignee={t.assignee} size="sm" />
               </div>
