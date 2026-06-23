@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { useStore } from "../lib/store";
 import { useUI } from "../lib/ui";
+import { useItemActions } from "../lib/actions";
 import { createIssue, createTodo } from "../lib/tauri";
 import { projectHue } from "../lib/derive";
 import { Icon } from "../lib/icons";
@@ -43,6 +44,7 @@ function parseKind(raw: string): { kind: ItemKind; rest: string } {
  */
 export function QuickAdd() {
   const { projects, reload, toast } = useStore();
+  const { runMutation } = useItemActions();
   const ui = useUI();
   const [text, setText] = useState("");
   const [focus, setFocus] = useState(false);
@@ -91,12 +93,16 @@ export function QuickAdd() {
     if (!raw || !current) return;
     const { kind, title, target } = resolve(raw);
     if (!title || !target) return;
-    const create = kind === "issue" ? createIssue : createTodo;
-    await create(target.id, title, undefined, undefined, undefined, assignee);
+    const ok = await runMutation(kind === "issue" ? "Couldn’t add issue" : "Couldn’t add todo", async () => {
+      const create = kind === "issue" ? createIssue : createTodo;
+      await create(target.id, title, undefined, undefined, undefined, assignee);
+      await reload();
+      const label = kind === "issue" ? "Issue added" : "Todo added";
+      toast(label, `${target.name} · ${title} · ${assigneeLabel(assignee)}`, "green");
+    });
+    // Keep the typed text on failure so the user can retry; only clear on success.
+    if (!ok) return;
     setText("");
-    await reload();
-    const label = kind === "issue" ? "Issue added" : "Todo added";
-    toast(label, `${target.name} · ${title} · ${assigneeLabel(assignee)}`, "green");
     inputRef.current?.focus();
   }
 

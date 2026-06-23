@@ -5,6 +5,7 @@ import { completeIssue, completeTodo, createIssue, createTodo } from "../lib/tau
 import type { Item, ItemKind } from "../lib/types";
 import { PRIORITY_META, PRIORITY_RANK } from "../lib/derive";
 import { useDoubleControl } from "../lib/useDoubleControl";
+import { useItemActions } from "../lib/actions";
 import { useUI } from "../lib/ui";
 import { Avatar } from "../components/ui";
 import { Icon } from "../lib/icons";
@@ -19,6 +20,7 @@ const TITLE_HANDOFF_LIMIT = 50;
  */
 export function SimpleModePage() {
   const { items, projects, reload, projectById } = useStore();
+  const { runMutation } = useItemActions();
   const ui = useUI();
   const navigate = useNavigate();
   const [text, setText] = useState("");
@@ -78,9 +80,12 @@ export function SimpleModePage() {
     if (!raw) return;
     const { kind, title, target } = resolve(raw);
     if (!target || !title) return;
-    await (kind === "issue" ? createIssue : createTodo)(target.id, title);
-    setText("");
-    await reload();
+    const ok = await runMutation(kind === "issue" ? "Couldn’t add issue" : "Couldn’t add todo", async () => {
+      await (kind === "issue" ? createIssue : createTodo)(target.id, title);
+      await reload();
+    });
+    // Keep the typed text on failure so the user can retry; only clear on success.
+    if (ok) setText("");
   }
 
   /** Long text deserves the full dialog. The typed words go into the
@@ -93,8 +98,10 @@ export function SimpleModePage() {
   }
 
   async function complete(item: Item) {
-    await (item.kind === "issue" ? completeIssue(item.id) : completeTodo(item.id));
-    await reload();
+    await runMutation("Couldn’t complete", async () => {
+      await (item.kind === "issue" ? completeIssue(item.id) : completeTodo(item.id));
+      await reload();
+    });
   }
 
   function onListKey(e: ReactKeyboardEvent) {

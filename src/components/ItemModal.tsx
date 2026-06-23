@@ -9,6 +9,7 @@ import {
   updateIssue,
   updateTodo,
 } from "../lib/tauri";
+import { useItemActions } from "../lib/actions";
 import { PRIORITY_META, STATUS_META, projectPrefix } from "../lib/derive";
 import { Icon } from "../lib/icons";
 import { Avatar, IconButton, Kbd, Toggle } from "./ui";
@@ -35,6 +36,7 @@ export function ItemModal({
   onClose: () => void;
 }) {
   const { items, projectById, reload, toast, seqId } = useStore();
+  const { runMutation } = useItemActions();
   const existing = config.itemId ? items.find((i) => i.id === config.itemId) : undefined;
   const project = projectById(config.projectId);
 
@@ -94,16 +96,22 @@ export function ItemModal({
     if (!t) return;
     const fields = { title: t, description: desc.trim(), status, priority, assignee };
     if (existing) {
-      if (existing.kind === "todo") await updateTodo(existing.id, fields);
-      else await updateIssue(existing.id, fields);
-      toast("Saved", `${seqId(existing.id)} · ${t}`);
-      await reload();
-      onClose();
+      const ok = await runMutation("Couldn’t save changes", async () => {
+        if (existing.kind === "todo") await updateTodo(existing.id, fields);
+        else await updateIssue(existing.id, fields);
+        toast("Saved", `${seqId(existing.id)} · ${t}`);
+        await reload();
+      });
+      // Keep the dialog open on failure so the user can retry without losing edits.
+      if (ok) onClose();
     } else {
-      const create = isIssue ? createIssue : createTodo;
-      await create(config.projectId, t, desc.trim() || undefined, status, priority, assignee);
-      toast(isIssue ? "Issue created" : "Todo created", t, "green");
-      await reload();
+      const ok = await runMutation(isIssue ? "Couldn’t create issue" : "Couldn’t create todo", async () => {
+        const create = isIssue ? createIssue : createTodo;
+        await create(config.projectId, t, desc.trim() || undefined, status, priority, assignee);
+        toast(isIssue ? "Issue created" : "Todo created", t, "green");
+        await reload();
+      });
+      if (!ok) return;
       if (createMore) resetDraft();
       else onClose();
     }
@@ -111,11 +119,13 @@ export function ItemModal({
 
   async function remove() {
     if (!existing) return;
-    if (existing.kind === "todo") await deleteTodo(existing.id);
-    else await deleteIssue(existing.id);
-    toast("Deleted", `${seqId(existing.id)} · ${existing.title}`, "red");
-    await reload();
-    onClose();
+    const ok = await runMutation("Couldn’t delete", async () => {
+      if (existing.kind === "todo") await deleteTodo(existing.id);
+      else await deleteIssue(existing.id);
+      toast("Deleted", `${seqId(existing.id)} · ${existing.title}`, "red");
+      await reload();
+    });
+    if (ok) onClose();
   }
 
   useEffect(() => {

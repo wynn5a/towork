@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useStore } from "../lib/store";
 import { useUI } from "../lib/ui";
+import { useItemActions } from "../lib/actions";
 import { createProject, updateProject } from "../lib/tauri";
 import { Icon } from "../lib/icons";
 import { IconButton, Kbd } from "./ui";
@@ -14,6 +15,7 @@ export function ProjectModal({
   onClose: () => void;
 }) {
   const { projectById, reload, toast } = useStore();
+  const { runMutation } = useItemActions();
   const ui = useUI();
   const navigate = useNavigate();
   const existing = projectId ? projectById(projectId) : undefined;
@@ -30,16 +32,24 @@ export function ProjectModal({
     const n = name.trim();
     if (!n) return;
     if (existing) {
-      await updateProject(existing.id, n, desc.trim());
-      toast("Saved", n);
-      await reload();
-      onClose();
+      const ok = await runMutation("Couldn’t save project", async () => {
+        await updateProject(existing.id, n, desc.trim());
+        toast("Saved", n);
+        await reload();
+      });
+      // Keep the dialog open on failure so the user can retry.
+      if (ok) onClose();
     } else {
-      const p = await createProject(n, desc.trim() || undefined);
-      toast("Project created", n, "green");
-      await reload();
+      let created: string | null = null;
+      const ok = await runMutation("Couldn’t create project", async () => {
+        const p = await createProject(n, desc.trim() || undefined);
+        created = p.id;
+        toast("Project created", n, "green");
+        await reload();
+      });
+      if (!ok) return;
       onClose();
-      navigate(`/project/${p.id}`);
+      if (created) navigate(`/project/${created}`);
     }
   }
 
