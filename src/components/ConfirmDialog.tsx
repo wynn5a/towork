@@ -1,5 +1,6 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Icon, type IconName } from "../lib/icons";
+import { useStore } from "../lib/store";
 
 export function ConfirmDialog({
   title,
@@ -15,16 +16,45 @@ export function ConfirmDialog({
   confirmLabel: string;
   tone?: "danger" | "accent";
   icon?: IconName;
-  onConfirm: () => void;
+  // Widened from `() => void` so async handlers (delete + reload, etc.) are
+  // awaited. Existing void handlers stay assignable.
+  onConfirm: () => void | Promise<void>;
   onClose: () => void;
 }) {
+  const { toast } = useStore();
+  // While a confirm is in flight, the button is disabled and re-entry is
+  // ignored — a fast double-click can't fire the destructive action twice.
+  const [pending, setPending] = useState(false);
+
+  // Cancel/Escape/backdrop are disabled while pending so the dialog can't be
+  // dismissed out from under an in-flight action.
+  function cancel() {
+    if (pending) return;
+    onClose();
+  }
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") cancel();
     };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, [onClose]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [onClose, pending]);
+
+  async function confirm() {
+    if (pending) return;
+    setPending(true);
+    try {
+      await onConfirm();
+      // Only dismiss on success. A failed (e.g. the row was already deleted by
+      // the AI over MCP) confirm leaves the dialog open with the error toast.
+      onClose();
+    } catch (err) {
+      toast("Action failed", String(err), "red");
+      setPending(false);
+    }
+  }
 
   const toneColor = tone === "accent" ? "var(--accent)" : "var(--red)";
   const chipBg =
@@ -33,7 +63,7 @@ export function ConfirmDialog({
       : "color-mix(in srgb, var(--red) 15%, transparent)";
 
   return (
-    <div className="overlay open" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+    <div className="overlay open" onMouseDown={(e) => e.target === e.currentTarget && cancel()}>
       <div className="dialog" role="dialog" aria-modal="true" style={{ width: 420 }}>
         <div className="dlg-head">
           <span className="dlg-ic" style={{ background: chipBg, color: toneColor }}>
@@ -45,15 +75,13 @@ export function ConfirmDialog({
           </div>
         </div>
         <div className="dlg-foot">
-          <button className="btn-chip" onClick={onClose}>
+          <button className="btn-chip" onClick={cancel} disabled={pending}>
             Cancel
           </button>
           <button
             className={tone === "accent" ? "btn-primary" : "btn-danger"}
-            onClick={() => {
-              onConfirm();
-              onClose();
-            }}
+            onClick={confirm}
+            disabled={pending}
           >
             <Icon name={icon} size={13} />
             {confirmLabel}
