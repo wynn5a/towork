@@ -341,7 +341,7 @@ pub fn call_tool(conn: &Connection, name: &str, args: Value) -> Result<Value, St
                         return Err(format!("no Todo with id {item_id}"));
                     }
                     if let Some(o) = old {
-                        log_changes(conn, "Todo", &item_id, &o.status, &o.priority, &o.assignee, &status, &priority, &assignee, &title, &description)?;
+                        log_changes(conn, "Todo", &item_id, &o.status, &o.priority, &o.assignee, &o.title, o.description.as_deref(), &status, &priority, &assignee, &title, &description)?;
                     }
                 }
                 "Issue" => {
@@ -351,7 +351,7 @@ pub fn call_tool(conn: &Connection, name: &str, args: Value) -> Result<Value, St
                         return Err(format!("no Issue with id {item_id}"));
                     }
                     if let Some(o) = old {
-                        log_changes(conn, "Issue", &item_id, &o.status, &o.priority, &o.assignee, &status, &priority, &assignee, &title, &description)?;
+                        log_changes(conn, "Issue", &item_id, &o.status, &o.priority, &o.assignee, &o.title, o.description.as_deref(), &status, &priority, &assignee, &title, &description)?;
                     }
                 }
                 _ => return Err("item_type must be Todo or Issue".into()),
@@ -509,6 +509,8 @@ fn log_changes(
     old_status: &str,
     old_priority: &str,
     old_assignee: &str,
+    old_title: &str,
+    old_description: Option<&str>,
     status: &Option<String>,
     priority: &Option<String>,
     assignee: &Option<String>,
@@ -531,8 +533,197 @@ fn log_changes(
             log(conn, item_type, id, "AssigneeChanged", Actor::AI, Some(old_assignee.into()), Some(a.clone()))?;
         }
     }
-    if title.is_some() || description.is_some() {
+    // Only log an "Updated" row when title/description ACTUALLY differ from the
+    // stored values — mirroring the GUI's `log_item_changes` exactly so the two
+    // write paths log identically. An update that re-sends the same title and
+    // description (e.g. a verbatim round-trip) must NOT write a no-op row (which
+    // would also needlessly fire the `towork:changed` UI refresh). Note the
+    // `Some(d) != old_description` Option handling: a `None`/unchanged
+    // description does not count as a change.
+    let title_changed = title.as_deref().map_or(false, |t| t != old_title);
+    let desc_changed = description.as_deref().map_or(false, |d| Some(d) != old_description);
+    if title_changed || desc_changed {
         log(conn, item_type, id, "Updated", Actor::AI, None, title.clone())?;
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// In-memory DB with the real schema/migrations and foreign keys enabled,
+    /// matching `db::init_db` (mirrors `db::schema`'s `test_conn`).
+    fn test_conn() -> Connection {
+        let conn = Connection::open_in_memory().unwrap();
+        conn.execute_batch("PRAGMA foreign_keys = ON;").unwrap();
+        crate::db::migrations::run_migrations(&conn).unwrap();
+        conn
+    }
+
+    /// Count "Updated" activity rows logged for a given item id.
+    fn updated_rows(conn: &Connection, item_id: &str) -> usize {
+        schema::query_activity(conn, Some(item_id), None, None, None)
+            .unwrap()
+            .into_iter()
+            .filter(|a| a.action == "Updated")
+            .count()
+    }
+
+    /// Regression: an MCP `update_item` that re-sends the SAME title and
+    /// description (a verbatim round-trip) must NOT write a no-op "Updated"
+    /// activity row — matching the GUI's `log_item_changes`, which only logs
+    /// when title/description actually differ. Previously the MCP path gated on
+    /// `title.is_some() || description.is_some()`, so an unchanged re-send still
+    /// wrote a spurious row (and needlessly fired the `towork:changed` refresh).
+    #[test]
+    fn update_item_unchanged_title_description_logs_no_updated_row() {
+        let conn = test_conn();
+        let p = Project::new("Proj".into(), None);
+        schema::insert_project(&conn, &p).unwrap();
+        let todo = Todo::new(
+            p.id.clone(),
+            "Title".into(),
+            Some("Body".into()),
+            None,
+            None,
+            None,
+        );
+        schema::insert_todo(&conn, &todo).unwrap();
+
+        // Re-send the SAME title and description verbatim.
+        let args = json!({
+            "item_id": todo.id,
+            "item_type": "Todo",
+            "title": "Title",
+            "description": "Body",
+        });
+        call_tool(&conn, "update_item", args).unwrap();
+
+        assert_eq!(updated_rows(&conn, &todo.id), 0, "no-op update must not log an Updated row");
+    }
+
+    /// A `None`/omitted description (and unchanged title) must not log either —
+    /// guards the `Some(d) != old_description` Option handling.
+    #[test]
+    fn update_item_omitted_fields_logs_no_updated_row() {
+        let conn = test_conn();
+        let p = Project::new("Proj".into(), None);
+        schema::insert_project(&conn, &p).unwrap();
+        let todo = Todo::new(
+            p.id.clone(),
+            "Title".into(),
+            Some("Body".into()),
+            None,
+            None,
+            None,
+        );
+        schema::insert_todo(&conn, &todo).unwrap();
+
+        // Only bump priority; title/description omitted entirely.
+        let args = json!({
+            "item_id": todo.id,
+            "item_type": "Todo",
+            "priority": "High",
+        });
+        call_tool(&conn, "update_item", args).unwrap();
+
+        assert_eq!(updated_rows(&conn, &todo.id), 0, "omitted title/description must not log an Updated row");
+        // The priority change itself should still be logged.
+        let changed = schema::query_activity(&conn, Some(&todo.id), None, None, None).unwrap();
+        assert!(
+            changed.iter().any(|a| a.action == "PriorityChanged"),
+            "priority change must still be logged",
+        );
+    }
+
+    /// An update that DOES change the description writes exactly one "Updated"
+    /// row.
+    #[test]
+    fn update_item_changed_description_logs_one_updated_row() {
+        let conn = test_conn();
+        let p = Project::new("Proj".into(), None);
+        schema::insert_project(&conn, &p).unwrap();
+        let todo = Todo::new(
+            p.id.clone(),
+            "Title".into(),
+            Some("Body".into()),
+            None,
+            None,
+            None,
+        );
+        schema::insert_todo(&conn, &todo).unwrap();
+
+        let args = json!({
+            "item_id": todo.id,
+            "item_type": "Todo",
+            "title": "Title",          // unchanged
+            "description": "New body", // changed
+        });
+        call_tool(&conn, "update_item", args).unwrap();
+
+        assert_eq!(updated_rows(&conn, &todo.id), 1, "a real description change logs exactly one Updated row");
+    }
+
+    /// An update that DOES change the title writes exactly one "Updated" row.
+    #[test]
+    fn update_item_changed_title_logs_one_updated_row() {
+        let conn = test_conn();
+        let p = Project::new("Proj".into(), None);
+        schema::insert_project(&conn, &p).unwrap();
+        let todo = Todo::new(
+            p.id.clone(),
+            "Title".into(),
+            Some("Body".into()),
+            None,
+            None,
+            None,
+        );
+        schema::insert_todo(&conn, &todo).unwrap();
+
+        let args = json!({
+            "item_id": todo.id,
+            "item_type": "Todo",
+            "title": "New title",
+        });
+        call_tool(&conn, "update_item", args).unwrap();
+
+        assert_eq!(updated_rows(&conn, &todo.id), 1, "a real title change logs exactly one Updated row");
+    }
+
+    /// The Issue twin must gate identically: an unchanged re-send logs no
+    /// "Updated" row, a real change logs exactly one.
+    #[test]
+    fn update_item_issue_twin_gates_identically() {
+        let conn = test_conn();
+        let p = Project::new("Proj".into(), None);
+        schema::insert_project(&conn, &p).unwrap();
+        let issue = Issue::new(
+            p.id.clone(),
+            "Title".into(),
+            Some("Body".into()),
+            None,
+            None,
+            None,
+        );
+        schema::insert_issue(&conn, &issue).unwrap();
+
+        // Verbatim re-send -> no row.
+        call_tool(
+            &conn,
+            "update_item",
+            json!({ "item_id": issue.id, "item_type": "Issue", "title": "Title", "description": "Body" }),
+        )
+        .unwrap();
+        assert_eq!(updated_rows(&conn, &issue.id), 0, "Issue no-op update must not log an Updated row");
+
+        // Real change -> exactly one row.
+        call_tool(
+            &conn,
+            "update_item",
+            json!({ "item_id": issue.id, "item_type": "Issue", "description": "Changed" }),
+        )
+        .unwrap();
+        assert_eq!(updated_rows(&conn, &issue.id), 1, "Issue real change logs exactly one Updated row");
+    }
 }
