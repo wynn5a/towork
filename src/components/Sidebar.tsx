@@ -39,6 +39,7 @@ export function Sidebar() {
   const activeProjectId = projMatch?.[1];
   const isHome = loc.pathname === "/";
   const isProjects = loc.pathname === "/projects";
+  const isSearch = loc.pathname === "/search";
 
   // The pen button creates a todo: in the active project if viewing one, else
   // the first project. With no projects yet, fall back to creating a project.
@@ -86,6 +87,18 @@ export function Sidebar() {
             <Icon name="project" size={16} />
           </span>
           <span className="ni-label">Projects</span>
+        </button>
+        <button
+          type="button"
+          className={`nav-item${isSearch ? " active" : ""}`}
+          aria-current={isSearch ? "page" : undefined}
+          onClick={() => navigate("/search")}
+        >
+          <span className="ni-ic">
+            <Icon name="search" size={16} />
+          </span>
+          <span className="ni-label">Search</span>
+          <Kbd keys={["⌘", "F"]} />
         </button>
         <button type="button" className="nav-item" onClick={() => ui.openCommandPalette()}>
           <span className="ni-ic">

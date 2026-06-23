@@ -22,6 +22,14 @@ export function App() {
         ui.toggleCommandPalette();
         return;
       }
+      // ⌘F / Ctrl+F — jump to the full-app search page. No-op while another
+      // overlay is open so it doesn't fight a dialog's own handling.
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "f") {
+        e.preventDefault();
+        if (ui.isAnyOverlayOpen()) return;
+        navigate("/search");
+        return;
+      }
       // ⌘N / Ctrl+N — open the new-todo dialog, scoped to the project you're
       // viewing (falling back to the first project). No-op while another
       // overlay is open or before any project exists.
@@ -39,7 +47,7 @@ export function App() {
     };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, [ui, projects, location.pathname]);
+  }, [ui, projects, location.pathname, navigate]);
 
   return (
     <div className="shell">
