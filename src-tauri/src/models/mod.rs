@@ -6,6 +6,9 @@ pub mod todo;
 /// The statuses an item may have. The DB `CHECK` constraint mirrors this set.
 pub const ITEM_STATUSES: [&str; 3] = ["Open", "In Progress", "Done"];
 
+/// The priorities an item may have. The DB `CHECK` constraint mirrors this set.
+pub const ITEM_PRIORITIES: [&str; 3] = ["Low", "Medium", "High"];
+
 /// Normalize a caller-supplied status into the allowed set, defaulting to
 /// "Open" when none is given. Returns `Err` for a non-empty but invalid value
 /// so a bad status is rejected rather than silently inserted (and then
@@ -16,6 +19,21 @@ pub fn normalize_status(status: Option<&str>) -> Result<String, String> {
         Some(s) if ITEM_STATUSES.contains(&s) => Ok(s.to_string()),
         Some(s) => Err(format!(
             "invalid status: {s:?} (expected one of Open, In Progress, Done)"
+        )),
+    }
+}
+
+/// Normalize a caller-supplied priority into the allowed set, defaulting to
+/// "Medium" when none is given. Returns `Err` for a non-empty but invalid value
+/// so a bad priority is rejected rather than silently inserted (and then
+/// rejected by the DB `CHECK` with an opaque error). Mirrors `normalize_status`:
+/// the default ("Medium") matches `Todo`/`Issue::new`'s priority fallback.
+pub fn normalize_priority(priority: Option<&str>) -> Result<String, String> {
+    match priority {
+        None => Ok("Medium".to_string()),
+        Some(s) if ITEM_PRIORITIES.contains(&s) => Ok(s.to_string()),
+        Some(s) => Err(format!(
+            "invalid priority: {s:?} (expected one of Low, Medium, High)"
         )),
     }
 }
@@ -75,6 +93,27 @@ mod tests {
         assert!(normalize_status(Some("in progress")).is_err()); // case-sensitive
         assert!(normalize_status(Some("Bogus")).is_err());
         assert!(normalize_status(Some("")).is_err());
+    }
+
+    #[test]
+    fn normalize_priority_defaults_to_medium() {
+        // Matches Todo/Issue::new's priority fallback when none is supplied.
+        assert_eq!(normalize_priority(None).unwrap(), "Medium");
+    }
+
+    #[test]
+    fn normalize_priority_accepts_allowed_values() {
+        for p in ITEM_PRIORITIES {
+            assert_eq!(normalize_priority(Some(p)).unwrap(), p);
+        }
+    }
+
+    #[test]
+    fn normalize_priority_rejects_invalid() {
+        assert!(normalize_priority(Some("Urgent")).is_err()); // the repro case
+        assert!(normalize_priority(Some("low")).is_err()); // case-sensitive
+        assert!(normalize_priority(Some("Bogus")).is_err());
+        assert!(normalize_priority(Some("")).is_err());
     }
 
     #[test]

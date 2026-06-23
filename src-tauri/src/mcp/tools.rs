@@ -3,7 +3,8 @@ use serde_json::{json, Value};
 
 use crate::db::schema;
 use crate::models::{
-    activity::ActivityLog, issue::Issue, normalize_status, todo::Todo, validate_title, Actor,
+    activity::ActivityLog, issue::Issue, normalize_priority, normalize_status, todo::Todo,
+    validate_title, Actor,
 };
 
 /// JSON-Schema tool definitions advertised to MCP clients.
@@ -147,12 +148,21 @@ pub fn call_tool(conn: &Connection, name: &str, args: Value) -> Result<Value, St
         "create_item" => {
             let project_id = require(&args, "project_id")?.to_string();
             let item_type = require(&args, "item_type")?;
+            // Confirm the project exists up front so a missing project returns a
+            // clear message instead of a raw `FOREIGN KEY constraint failed`.
+            if schema::query_project(conn, &project_id)
+                .map_err(|e| e.to_string())?
+                .is_none()
+            {
+                return Err(format!("project {project_id} not found"));
+            }
             // Reject a blank / whitespace-only title and store the trimmed value.
             let title = validate_title(require(&args, "title")?)?;
             let description = owned(&args, "description");
             // Status is optional and defaults to "Open"; reject an invalid value.
             let status = normalize_status(str_arg(&args, "status"))?;
-            let priority = owned(&args, "priority");
+            // Priority is optional and defaults to "Medium"; reject an invalid value.
+            let priority = normalize_priority(str_arg(&args, "priority"))?;
             // Assignee defaults to AI but may be set explicitly. The creator,
             // logged on the "Created" entry, is always AI — items made over MCP
             // are authored by Claude regardless of whom they're assigned to.
@@ -160,13 +170,13 @@ pub fn call_tool(conn: &Connection, name: &str, args: Value) -> Result<Value, St
 
             let value = match item_type {
                 "Todo" => {
-                    let todo = Todo::new(project_id, title, description, Some(status), priority, Some(actor));
+                    let todo = Todo::new(project_id, title, description, Some(status), Some(priority), Some(actor));
                     schema::insert_todo(conn, &todo).map_err(|e| e.to_string())?;
                     log(conn, "Todo", &todo.id, "Created", Actor::AI, None, Some(todo.title.clone()))?;
                     json!(todo)
                 }
                 "Issue" => {
-                    let issue = Issue::new(project_id, title, description, Some(status), priority, Some(actor));
+                    let issue = Issue::new(project_id, title, description, Some(status), Some(priority), Some(actor));
                     schema::insert_issue(conn, &issue).map_err(|e| e.to_string())?;
                     log(conn, "Issue", &issue.id, "Created", Actor::AI, None, Some(issue.title.clone()))?;
                     json!(issue)
@@ -185,8 +195,16 @@ pub fn call_tool(conn: &Connection, name: &str, args: Value) -> Result<Value, St
                 None => None,
             };
             let description = owned(&args, "description");
-            let status = owned(&args, "status");
-            let priority = owned(&args, "priority");
+            // Validate status / priority only when supplied; an absent field
+            // leaves the existing value alone (no forced default on update).
+            let status = match str_arg(&args, "status") {
+                Some(s) => Some(normalize_status(Some(s))?),
+                None => None,
+            };
+            let priority = match str_arg(&args, "priority") {
+                Some(p) => Some(normalize_priority(Some(p))?),
+                None => None,
+            };
             let assignee = owned(&args, "assignee");
 
             match item_type {
