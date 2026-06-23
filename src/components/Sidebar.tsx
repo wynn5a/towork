@@ -58,8 +58,18 @@ export function Sidebar() {
         <span className="ws-name">
           Towork<span className="sub">local · MCP</span>
         </span>
+        <Tooltip label="Simple Mode — focused view (double-press Ctrl)">
+          <button
+            className="icon-btn"
+            style={{ marginLeft: "auto" }}
+            aria-label="Enter Simple Mode"
+            onClick={() => navigate("/simple")}
+          >
+            <Icon name="target" size={15} />
+          </button>
+        </Tooltip>
         <Tooltip label="New todo">
-          <button className="icon-btn" style={{ marginLeft: "auto" }} onClick={compose}>
+          <button className="icon-btn" aria-label="New todo" onClick={compose}>
             <Icon name="edit" size={15} />
           </button>
         </Tooltip>

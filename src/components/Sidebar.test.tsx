@@ -86,3 +86,28 @@ describe("Sidebar search access", () => {
     expect(searchNav).toHaveAttribute("aria-current", "page");
   });
 });
+
+describe("Sidebar Simple Mode access", () => {
+  beforeEach(() => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+  });
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("exposes a Simple Mode control reachable by accessible name", async () => {
+    renderSidebar();
+    expect(
+      await screen.findByRole("button", { name: /simple mode/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("activating Simple Mode routes to /simple", async () => {
+    renderSidebar();
+
+    const simpleBtn = await screen.findByRole("button", { name: /simple mode/i });
+    fireEvent.click(simpleBtn);
+
+    expect(screen.getByTestId("pathname")).toHaveTextContent("/simple");
+  });
+});
