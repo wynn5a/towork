@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { Item, Project } from "../lib/types";
 import { useStore } from "../lib/store";
 import { useUI } from "../lib/ui";
@@ -252,6 +252,17 @@ function Pager({
   );
 }
 
+/** A stable signature of *which* items a section holds, in order. It changes
+ *  when the underlying list genuinely changes (a different sub-tab/bucket, or
+ *  an item entering/leaving this section) but stays identical across a
+ *  background reload that didn't touch this section — so the pager only resets
+ *  when the list you're looking at actually changed, not on every reload. */
+function contentSig(items: Item[]): string {
+  let sig = String(items.length);
+  for (const it of items) sig += "|" + it.id;
+  return sig;
+}
+
 /** One labelled section (Open or Done) with client-side pagination once it
  *  exceeds PAGE_SIZE items. Each section tracks its own page. */
 function ListSection({
@@ -268,10 +279,28 @@ function ListSection({
   onOpen: (item: Item) => void;
 }) {
   const [page, setPage] = useState(0);
+
+  // Reset to the first page whenever the section's content identity changes —
+  // e.g. switching the Open↔Done sub-tab reuses this same ListSection instance
+  // (flat/none grouping always keys the section "all"), so without this you'd
+  // land on the prior tab's page number. A background reload that leaves this
+  // section's items untouched produces the same signature and is a no-op, so
+  // the user isn't yanked to page 1 by unrelated activity elsewhere.
+  const sig = contentSig(items);
+  const prevSig = useRef(sig);
+  useEffect(() => {
+    if (prevSig.current !== sig) {
+      prevSig.current = sig;
+      setPage(0);
+    }
+  }, [sig]);
+
   if (items.length === 0) return null;
 
   const pageCount = Math.ceil(items.length / PAGE_SIZE);
-  // Clamp in case the list shrank (e.g. an item was toggled into another section).
+  // Belt-and-suspenders clamp: if a reload shrank this section below the
+  // current page before the reset effect runs (or removed the trailing page),
+  // fall back to the last page that still exists rather than rendering empty.
   const current = Math.min(page, pageCount - 1);
   const visible = items.slice(current * PAGE_SIZE, current * PAGE_SIZE + PAGE_SIZE);
   const allDone = items.every((i) => i.status === "Done");
