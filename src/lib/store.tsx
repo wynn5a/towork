@@ -19,6 +19,10 @@ export interface Toast {
   title: string;
   body?: string;
   hue: ToastHue;
+  /** Set once the toast is on its way out, so the `Toaster` renders the
+   *  slide-out (`.toast.out`) animation. The row isn't removed from the list
+   *  until that animation ends (`removeToast`), keeping the exit animated. */
+  leaving?: boolean;
 }
 
 interface StoreCtx {
@@ -41,7 +45,13 @@ interface StoreCtx {
   seqId: (itemId: string) => string;
   toasts: Toast[];
   toast: (title: string, body?: string, hue?: ToastHue) => void;
+  /** Begin a toast's exit: flips it to a leaving state so the slide-out
+   *  animation plays. Called by the auto-dismiss timer and by manual dismiss. */
   dismissToast: (id: number) => void;
+  /** Actually drop a toast from the list — fired by `Toaster` once the
+   *  slide-out animation ends. Separated from `dismissToast` so the exit stays
+   *  animated rather than the row vanishing synchronously. */
+  removeToast: (id: number) => void;
 }
 
 const Ctx = createContext<StoreCtx | null>(null);
@@ -175,7 +185,18 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
+  // Flip a toast to its leaving state (idempotent) so the `Toaster` plays the
+  // slide-out animation; the row is removed later in `removeToast` once that
+  // animation ends. Both the auto-dismiss timer and manual dismiss call this.
   const dismissToast = useCallback((id: number) => {
+    setToasts((prev) =>
+      prev.map((x) => (x.id === id && !x.leaving ? { ...x, leaving: true } : x))
+    );
+  }, []);
+
+  // Drop a toast from the list. Fired by `Toaster.onAnimationEnd` after the
+  // slide-out finishes (guarded by id presence so a double-end can't error).
+  const removeToast = useCallback((id: number) => {
     setToasts((prev) => prev.filter((x) => x.id !== id));
   }, []);
 
@@ -204,8 +225,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       toasts,
       toast,
       dismissToast,
+      removeToast,
     }),
-    [projects, todos, issues, items, recentAiActivity, aiTouched, loading, reload, seqMap, toasts, toast, dismissToast]
+    [projects, todos, issues, items, recentAiActivity, aiTouched, loading, reload, seqMap, toasts, toast, dismissToast, removeToast]
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

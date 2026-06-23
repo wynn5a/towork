@@ -951,9 +951,17 @@ textarea.input { resize: vertical; min-height: 64px; line-height: 1.55; }
 @keyframes toast-in { from { opacity: 0; transform: translateX(14px); } to { opacity: 1; transform: none; } }
 .toast.out { animation: toast-out var(--dur-3) var(--ease) forwards; }
 @keyframes toast-out { to { opacity: 0; transform: translateX(14px); } }
+.toast { cursor: pointer; }
 .toast .tic { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 7px; flex-shrink: 0; }
 .toast b { font-weight: 600; color: var(--text-1); }
 .toast p { margin: 3px 0 0; color: var(--text-3); line-height: 1.45; }
+.toast-close {
+  flex-shrink: 0; display: grid; place-items: center; width: 22px; height: 22px; margin: -2px -2px 0 0;
+  border: none; border-radius: 6px; background: transparent; color: var(--text-4); cursor: pointer;
+  transition: background-color var(--dur-2) var(--ease), color var(--dur-2) var(--ease);
+}
+.toast-close:hover { background: var(--bg-hover); color: var(--text-1); }
+.toast-close:active { transform: scale(0.9); }
 
 /* misc */
 .hidden { display: none !important; }
