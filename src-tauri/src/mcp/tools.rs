@@ -3,8 +3,8 @@ use serde_json::{json, Value};
 
 use crate::db::schema;
 use crate::models::{
-    activity::ActivityLog, issue::Issue, normalize_priority, normalize_status, todo::Todo,
-    validate_title, Actor,
+    activity::ActivityLog, issue::Issue, normalize_assignee, normalize_priority, normalize_status,
+    todo::Todo, validate_item_type, validate_title, Actor,
 };
 
 /// JSON-Schema tool definitions advertised to MCP clients.
@@ -139,10 +139,26 @@ pub fn call_tool(conn: &Connection, name: &str, args: Value) -> Result<Value, St
         }
         "list_items" => {
             let project_id = str_arg(&args, "project_id");
+            // Validate enum filters when supplied so a typo'd filter errors with
+            // a friendly message instead of silently returning an empty list
+            // (a confident wrong answer for AI triage). Absent filters are left
+            // as `None` (no `WHERE` clause added).
             let status = str_arg(&args, "status");
+            if status.is_some() {
+                normalize_status(status)?;
+            }
             let priority = str_arg(&args, "priority");
+            if priority.is_some() {
+                normalize_priority(priority)?;
+            }
             let assignee = str_arg(&args, "assignee");
+            if assignee.is_some() {
+                normalize_assignee(assignee)?;
+            }
             let item_type = str_arg(&args, "item_type");
+            if item_type.is_some() {
+                validate_item_type(item_type)?;
+            }
 
             let mut out = json!({});
             if item_type != Some("Issue") {
@@ -175,10 +191,15 @@ pub fn call_tool(conn: &Connection, name: &str, args: Value) -> Result<Value, St
             let status = normalize_status(str_arg(&args, "status"))?;
             // Priority is optional and defaults to "Medium"; reject an invalid value.
             let priority = normalize_priority(str_arg(&args, "priority"))?;
-            // Assignee defaults to AI but may be set explicitly. The creator,
-            // logged on the "Created" entry, is always AI — items made over MCP
-            // are authored by Claude regardless of whom they're assigned to.
-            let actor = Actor::from_str(str_arg(&args, "assignee").unwrap_or("AI"));
+            // Assignee defaults to AI but may be set explicitly. Validate a
+            // supplied value (friendly Err on e.g. "Banana") rather than letting
+            // `Actor::from_str` silently coerce an unknown string to User. The
+            // creator, logged on the "Created" entry, is always AI — items made
+            // over MCP are authored by Claude regardless of whom they're assigned to.
+            let actor = match str_arg(&args, "assignee") {
+                Some(a) => Actor::from_str(&normalize_assignee(Some(a))?),
+                None => Actor::AI,
+            };
 
             let value = match item_type {
                 "Todo" => {
@@ -217,7 +238,13 @@ pub fn call_tool(conn: &Connection, name: &str, args: Value) -> Result<Value, St
                 Some(p) => Some(normalize_priority(Some(p))?),
                 None => None,
             };
-            let assignee = owned(&args, "assignee");
+            // Validate assignee only when supplied so a bad value (e.g. "Banana")
+            // returns a friendly Err instead of a raw `CHECK constraint failed`;
+            // an absent assignee leaves the existing value alone.
+            let assignee = match str_arg(&args, "assignee") {
+                Some(a) => Some(normalize_assignee(Some(a))?),
+                None => None,
+            };
 
             match item_type {
                 "Todo" => {
@@ -332,7 +359,12 @@ pub fn call_tool(conn: &Connection, name: &str, args: Value) -> Result<Value, St
         }
         "get_activity" => {
             let item_id = str_arg(&args, "item_id");
+            // Validate the item_type filter when supplied so a typo (e.g.
+            // "Banana") errors instead of silently returning zero rows.
             let item_type = str_arg(&args, "item_type");
+            if item_type.is_some() {
+                validate_item_type(item_type)?;
+            }
             let activities = schema::query_activity(conn, item_id, item_type, None).map_err(|e| e.to_string())?;
             Ok(text_result(json!(activities)))
         }
