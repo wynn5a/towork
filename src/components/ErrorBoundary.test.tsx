@@ -68,4 +68,48 @@ describe("ErrorBoundary", () => {
     expect(screen.getByText("recovered content")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Try again" })).not.toBeInTheDocument();
   });
+
+  it("auto-recovers when a resetKey changes (e.g. route navigation)", () => {
+    const { rerender } = render(
+      <ErrorBoundary resetKeys={["/a"]}>
+        <Bomb />
+      </ErrorBoundary>,
+    );
+    // Child threw → fallback is shown, recovered content is not.
+    expect(screen.getByRole("button", { name: "Try again" })).toBeInTheDocument();
+    expect(screen.queryByText("recovered content")).not.toBeInTheDocument();
+
+    // Fix the underlying problem, then "navigate" by changing the resetKey.
+    // No "Try again" click — the boundary should clear itself.
+    crash = false;
+    rerender(
+      <ErrorBoundary resetKeys={["/b"]}>
+        <Bomb />
+      </ErrorBoundary>,
+    );
+
+    expect(screen.getByText("recovered content")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Try again" })).not.toBeInTheDocument();
+  });
+
+  it("stays in the error state when resetKeys are unchanged", () => {
+    const { rerender } = render(
+      <ErrorBoundary resetKeys={["/a"]}>
+        <Bomb />
+      </ErrorBoundary>,
+    );
+    expect(screen.getByRole("button", { name: "Try again" })).toBeInTheDocument();
+
+    // Same resetKey on re-render must NOT clear the error, even if the child
+    // would now succeed — only a key change (or "Try again") recovers.
+    crash = false;
+    rerender(
+      <ErrorBoundary resetKeys={["/a"]}>
+        <Bomb />
+      </ErrorBoundary>,
+    );
+
+    expect(screen.getByRole("button", { name: "Try again" })).toBeInTheDocument();
+    expect(screen.queryByText("recovered content")).not.toBeInTheDocument();
+  });
 });
