@@ -54,31 +54,43 @@ pub fn insert_project(conn: &rusqlite::Connection, project: &Project) -> anyhow:
     Ok(())
 }
 
+/// Returns the number of rows matched (0 if no project has the given id). See
+/// `update_todo` for the max-across-statements rationale: each `WHERE id = ?`
+/// statement matches at most one row, so the result is `0` (no such id) or `1`
+/// (matched), independent of how many fields were set. Note a no-field update
+/// (both `name` and `description` `None`) runs no statement and so returns `0`
+/// even for an existing project — callers that need to distinguish "missing"
+/// from "nothing to change" should confirm existence separately.
 pub fn update_project(
     conn: &rusqlite::Connection,
     id: &str,
     name: Option<&str>,
     description: Option<&str>,
-) -> anyhow::Result<()> {
+) -> anyhow::Result<usize> {
     let now = chrono::Utc::now().to_rfc3339();
+    let mut rows = 0;
     if let Some(name) = name {
-        conn.execute(
+        rows = rows.max(conn.execute(
             "UPDATE projects SET name = ?1, updated_at = ?2 WHERE id = ?3",
             params![name, now, id],
-        )?;
+        )?);
     }
     if let Some(description) = description {
-        conn.execute(
+        rows = rows.max(conn.execute(
             "UPDATE projects SET description = ?1, updated_at = ?2 WHERE id = ?3",
             params![description, now, id],
-        )?;
+        )?);
     }
-    Ok(())
+    Ok(rows)
 }
 
-pub fn delete_project(conn: &rusqlite::Connection, id: &str) -> anyhow::Result<()> {
-    conn.execute("DELETE FROM projects WHERE id = ?1", params![id])?;
-    Ok(())
+/// Returns the number of rows deleted: `0` if no project has the given id, or
+/// `1` when one was removed. Callers can treat `0` as "not found". The schema's
+/// `FOREIGN KEY ... ON DELETE CASCADE` means deleting a project also deletes all
+/// of its todos and issues.
+pub fn delete_project(conn: &rusqlite::Connection, id: &str) -> anyhow::Result<usize> {
+    let rows = conn.execute("DELETE FROM projects WHERE id = ?1", params![id])?;
+    Ok(rows)
 }
 
 /* ------------------------------- todos ------------------------------ */
@@ -568,10 +580,57 @@ mod tests {
         let i = Issue::new(p.id.clone(), "i".into(), None, None, None, None);
         insert_issue(&conn, &i).unwrap();
 
-        delete_project(&conn, &p.id).unwrap();
+        // Deleting the project reports exactly one project row removed...
+        assert_eq!(delete_project(&conn, &p.id).unwrap(), 1);
 
+        // ...and cascades through the FK to its todos and issues.
         assert!(query_todo(&conn, &t.id).unwrap().is_none());
         assert!(query_issue(&conn, &i.id).unwrap().is_none());
+    }
+
+    /// Regression: `update_project` must report how many rows matched so the MCP
+    /// `update_project` tool can detect a missing id. Updating a non-existent id
+    /// matches nothing (`Ok(0)`); updating an existing id with at least one field
+    /// matches exactly one row (`Ok(1)`). A no-field update runs no statement and
+    /// so returns `Ok(0)` even for an existing project — which is why the tool
+    /// confirms existence via `query_project` rather than relying on this count
+    /// alone.
+    #[test]
+    fn update_project_affected_rows_signals_missing_id() {
+        let conn = test_conn();
+
+        // Non-existent id matches nothing.
+        assert_eq!(
+            update_project(&conn, "nope-123", Some("New name"), None).unwrap(),
+            0
+        );
+
+        // Existing id, one field set: matches exactly one row.
+        let p = seed_project(&conn);
+        assert_eq!(
+            update_project(&conn, &p.id, Some("Renamed"), None).unwrap(),
+            1
+        );
+        assert_eq!(query_project(&conn, &p.id).unwrap().unwrap().name, "Renamed");
+
+        // Existing id, no fields supplied: no statement runs, so 0 rows.
+        assert_eq!(update_project(&conn, &p.id, None, None).unwrap(), 0);
+    }
+
+    /// Regression: `delete_project` must report how many rows were removed so the
+    /// MCP `delete_project` tool can reject a stale or typo'd id. Deleting a
+    /// non-existent id returns `Ok(0)`; deleting an existing one returns `Ok(1)`.
+    #[test]
+    fn delete_project_affected_rows_signals_missing_id() {
+        let conn = test_conn();
+
+        // Non-existent id matches nothing.
+        assert_eq!(delete_project(&conn, "nope-123").unwrap(), 0);
+
+        // Existing id deletes exactly one row.
+        let p = seed_project(&conn);
+        assert_eq!(delete_project(&conn, &p.id).unwrap(), 1);
+        assert!(query_project(&conn, &p.id).unwrap().is_none());
     }
 
     /* ----------------------------- todos ---------------------------- */

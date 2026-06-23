@@ -36,11 +36,13 @@ pub fn update_project(
 ) -> Result<(), String> {
     let conn = state.conn.lock().map_err(|e| e.to_string())?;
     schema::update_project(&conn, &id, name.as_deref(), description.as_deref())
-        .map_err(|e| e.to_string())
+        .map_err(|e| e.to_string())?;
+    Ok(())
 }
 
 #[tauri::command]
 pub fn delete_project(state: State<'_, DbState>, id: String) -> Result<(), String> {
     let conn = state.conn.lock().map_err(|e| e.to_string())?;
-    schema::delete_project(&conn, &id).map_err(|e| e.to_string())
+    schema::delete_project(&conn, &id).map_err(|e| e.to_string())?;
+    Ok(())
 }

@@ -4,7 +4,7 @@ use serde_json::{json, Value};
 use crate::db::schema;
 use crate::models::{
     activity::ActivityLog, issue::Issue, normalize_assignee, normalize_priority, normalize_status,
-    todo::Todo, validate_item_type, validate_search_query, validate_title, Actor,
+    project::Project, todo::Todo, validate_item_type, validate_search_query, validate_title, Actor,
 };
 
 /// JSON-Schema tool definitions advertised to MCP clients.
@@ -14,6 +14,42 @@ pub fn list_tools() -> Value {
             "name": "list_projects",
             "description": "List all projects with their id, name and description.",
             "inputSchema": { "type": "object", "properties": {} }
+        },
+        {
+            "name": "create_project",
+            "description": "Create a new project to file todos and issues into. Returns the created project (including its generated id). The name must not be blank.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "name": { "type": "string" },
+                    "description": { "type": "string" }
+                },
+                "required": ["name"]
+            }
+        },
+        {
+            "name": "update_project",
+            "description": "Update a project's name and/or description. Supply only the fields you want to change; omitted fields are left unchanged. A supplied name must not be blank. Errors if the project does not exist.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "project_id": { "type": "string" },
+                    "name": { "type": "string" },
+                    "description": { "type": "string" }
+                },
+                "required": ["project_id"]
+            }
+        },
+        {
+            "name": "delete_project",
+            "description": "PERMANENTLY delete a project. This is IRREVERSIBLE and CASCADES: deleting a project DELETES ALL of its todos and issues along with it — there is NO undo, NO trash, and NO confirmation prompt (unlike the GUI, which confirms before deleting). Everything filed under the project is removed immediately and cannot be recovered. Use this only when you are certain the entire project and all its items should be gone; to retire a project without losing its work, rename it with update_project instead.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "project_id": { "type": "string" }
+                },
+                "required": ["project_id"]
+            }
         },
         {
             "name": "list_items",
@@ -138,6 +174,55 @@ pub fn call_tool(conn: &Connection, name: &str, args: Value) -> Result<Value, St
         "list_projects" => {
             let projects = schema::query_projects(conn).map_err(|e| e.to_string())?;
             Ok(text_result(json!(projects)))
+        }
+        "create_project" => {
+            // Reject a blank / whitespace-only name and store the trimmed value
+            // (reuses the same validator the item tools use for titles).
+            let name = validate_title(require(&args, "name")?)?;
+            let description = owned(&args, "description");
+            let project = Project::new(name, description);
+            schema::insert_project(conn, &project).map_err(|e| e.to_string())?;
+            // The GUI `create_project` command logs no project activity, so —
+            // keeping parity — neither does this MCP tool.
+            Ok(text_result(json!(project)))
+        }
+        "update_project" => {
+            let project_id = require(&args, "project_id")?.to_string();
+            // When a name is supplied, reject blank / whitespace-only and store
+            // the trimmed value; an absent name leaves the existing one alone.
+            let name = match str_arg(&args, "name") {
+                Some(n) => Some(validate_title(n)?),
+                None => None,
+            };
+            let description = owned(&args, "description");
+            // Confirm the project exists up front so a missing project returns a
+            // clear message. (A no-field update on an existing project matches
+            // zero rows, so an affected-rows check alone can't distinguish
+            // "missing" from "nothing to change" — query existence directly,
+            // mirroring how `create_item` validates its project_id.)
+            if schema::query_project(conn, &project_id)
+                .map_err(|e| e.to_string())?
+                .is_none()
+            {
+                return Err(format!("project {project_id} not found"));
+            }
+            schema::update_project(conn, &project_id, name.as_deref(), description.as_deref())
+                .map_err(|e| e.to_string())?;
+            // The GUI `update_project` command logs no project activity, so —
+            // keeping parity — neither does this MCP tool.
+            Ok(text_result(json!({ "ok": true, "project_id": project_id })))
+        }
+        "delete_project" => {
+            let project_id = require(&args, "project_id")?.to_string();
+            // `delete_project` cascades to the project's todos/issues via the
+            // schema FK, so `0` affected rows means the project never existed.
+            let rows = schema::delete_project(conn, &project_id).map_err(|e| e.to_string())?;
+            if rows == 0 {
+                return Err(format!("project {project_id} not found"));
+            }
+            // The GUI `delete_project` command logs no project activity, so —
+            // keeping parity — neither does this MCP tool.
+            Ok(text_result(json!({ "ok": true, "project_id": project_id })))
         }
         "list_items" => {
             let project_id = str_arg(&args, "project_id");
