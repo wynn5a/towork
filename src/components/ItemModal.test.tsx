@@ -11,7 +11,7 @@ const PROJECT: Project = {
   created_at: "2024-01-01T00:00:00Z",
   updated_at: "2024-01-01T00:00:00Z",
 };
-const TODO: Todo = {
+const BASE_TODO: Todo = {
   id: "t1",
   project_id: "p1",
   title: "Existing todo",
@@ -23,11 +23,15 @@ const TODO: Todo = {
   updated_at: "2024-01-01T00:00:00Z",
 };
 
+// Mutable so a test can simulate an external edit (e.g. the AI over MCP) landing
+// between reloads: swap this then call the store's reload() via the harness.
+let currentTodo: Todo = { ...BASE_TODO };
+
 const updateTodo = vi.fn();
 
 vi.mock("../lib/tauri", () => ({
   listProjects: () => Promise.resolve([PROJECT]),
-  listTodos: () => Promise.resolve([TODO]),
+  listTodos: () => Promise.resolve([currentTodo]),
   listIssues: () => Promise.resolve([]),
   getActivity: () => Promise.resolve([]),
   updateTodo: (...args: unknown[]) => updateTodo(...args),
@@ -49,11 +53,19 @@ import { ItemModal } from "./ItemModal";
 
 // ItemModal seeds its form state from the store on mount (the real app always
 // opens it from an already-loaded list), so only mount it once the async
-// reload() has surfaced the fixture item.
+// reload() has surfaced the fixture item. The hidden "reload-store" button
+// stands in for the live-refresh that `towork:changed` triggers in the app
+// (mocked to a no-op under jsdom): a test mutates `currentTodo` then clicks it
+// to pull the external change into the store, exactly as a real reload would.
 function Gate({ onClose }: { onClose: () => void }) {
-  const { items } = useStore();
+  const { items, reload } = useStore();
   if (!items.some((i) => i.id === "t1")) return null;
-  return <ItemModal config={{ kind: "todo", projectId: "p1", itemId: "t1" }} onClose={onClose} />;
+  return (
+    <>
+      <ItemModal config={{ kind: "todo", projectId: "p1", itemId: "t1" }} onClose={onClose} />
+      <button onClick={() => void reload()}>reload-store</button>
+    </>
+  );
 }
 
 function renderModal(onClose: () => void) {
@@ -67,6 +79,7 @@ function renderModal(onClose: () => void) {
 
 describe("ItemModal error feedback", () => {
   beforeEach(() => {
+    currentTodo = { ...BASE_TODO };
     updateTodo.mockReset();
     vi.spyOn(console, "error").mockImplementation(() => {});
   });
@@ -106,5 +119,64 @@ describe("ItemModal error feedback", () => {
 
     await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
     expect(screen.queryByText("Couldn’t save changes")).not.toBeInTheDocument();
+  });
+});
+
+describe("ItemModal live-sync to external edits", () => {
+  beforeEach(() => {
+    currentTodo = { ...BASE_TODO };
+    updateTodo.mockReset();
+    vi.spyOn(console, "error").mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("re-syncs an untouched field when the item changes underneath the open modal", async () => {
+    const onClose = vi.fn();
+    renderModal(onClose);
+
+    // Modal is open showing the original title; the user hasn't touched it.
+    await screen.findByDisplayValue("Existing todo");
+
+    // The AI edits the same item over MCP: title changes + updated_at bumps.
+    currentTodo = {
+      ...BASE_TODO,
+      title: "Title from the AI",
+      updated_at: "2024-02-02T00:00:00Z",
+    };
+    fireEvent.click(screen.getByRole("button", { name: "reload-store" }));
+
+    // The untouched title field re-syncs to the AI's value live...
+    expect(await screen.findByDisplayValue("Title from the AI")).toBeInTheDocument();
+    // ...and since nothing was dirty, no conflict banner appears.
+    expect(screen.queryByText(/changed elsewhere/i)).not.toBeInTheDocument();
+  });
+
+  it("warns instead of clobbering when a dirty field changes underneath, and Reload pulls the external value", async () => {
+    const onClose = vi.fn();
+    renderModal(onClose);
+
+    // User edits the title (it's now dirty)...
+    const titleInput = (await screen.findByDisplayValue("Existing todo")) as HTMLInputElement;
+    fireEvent.change(titleInput, { target: { value: "My in-progress edit" } });
+
+    // ...then the AI changes the *same* field underneath.
+    currentTodo = {
+      ...BASE_TODO,
+      title: "Title from the AI",
+      updated_at: "2024-02-02T00:00:00Z",
+    };
+    fireEvent.click(screen.getByRole("button", { name: "reload-store" }));
+
+    // The user's edit is preserved (not silently clobbered) and a banner warns.
+    expect(await screen.findByText(/changed elsewhere/i)).toBeInTheDocument();
+    expect(screen.getByDisplayValue("My in-progress edit")).toBeInTheDocument();
+
+    // Clicking Reload pulls the external value in and clears the banner.
+    fireEvent.click(screen.getByRole("button", { name: "Reload" }));
+    expect(await screen.findByDisplayValue("Title from the AI")).toBeInTheDocument();
+    expect(screen.queryByText(/changed elsewhere/i)).not.toBeInTheDocument();
   });
 });

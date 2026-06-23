@@ -53,6 +53,23 @@ export function ItemModal({
   const [menu, setMenu] = useState<{ key: PropKey; pos: MenuPos } | null>(null);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [showActivity, setShowActivity] = useState(false);
+  // Set when a field the user has edited changed underneath us (e.g. the AI
+  // edited the same item over MCP). We don't silently clobber their in-progress
+  // work; instead we surface a non-destructive "changed elsewhere" banner.
+  const [conflict, setConflict] = useState(false);
+
+  // The values each field was last synced *from* — i.e. what `existing` held the
+  // last time we reconciled. A field is "dirty" when its current local state
+  // differs from this. We compare the *external* value against this snapshot to
+  // tell an untouched-field resync apart from a genuine conflict, and refs (not
+  // state) keep the live-sync effect from re-running on every keystroke.
+  const synced = useRef({
+    title: existing?.title ?? config.draft?.title ?? "",
+    description: existing?.description ?? config.draft?.description ?? "",
+    status: existing?.status ?? ("Open" as Status),
+    priority: existing?.priority ?? config.draft?.priority ?? ("Medium" as Priority),
+    assignee: existing?.assignee ?? config.draft?.assignee ?? ("User" as Assignee),
+  });
 
   const titleRef = useRef<HTMLInputElement>(null);
   const descRef = useRef<HTMLTextAreaElement>(null);
@@ -78,6 +95,70 @@ export function ItemModal({
     el.style.height = `${el.scrollHeight}px`;
   }, [desc]);
 
+  // Live-sync to external edits. When the item changes underneath the open modal
+  // (the AI edits it over MCP, the store reloads on `towork:changed`), `existing`
+  // recomputes to the new values. For each field the user hasn't touched, adopt
+  // the new value silently so the editor reflects the AI's change in place. For a
+  // field the user *has* edited, leave their work alone but flag a conflict so we
+  // can warn rather than have Save quietly clobber the AI. Keyed on `updated_at`
+  // (and id) so it fires once per external change, not on every keystroke.
+  useEffect(() => {
+    if (!existing) return;
+    const s = synced.current;
+    const ext = {
+      title: existing.title,
+      description: existing.description ?? "",
+      status: existing.status,
+      priority: existing.priority,
+      assignee: existing.assignee,
+    };
+    let conflicted = false;
+    if (ext.title !== s.title) {
+      if (title === s.title) { setTitle(ext.title); s.title = ext.title; }
+      else conflicted = true;
+    }
+    if (ext.description !== s.description) {
+      if (desc === s.description) { setDesc(ext.description); s.description = ext.description; }
+      else conflicted = true;
+    }
+    if (ext.status !== s.status) {
+      if (status === s.status) { setStatus(ext.status); s.status = ext.status; }
+      else conflicted = true;
+    }
+    if (ext.priority !== s.priority) {
+      if (priority === s.priority) { setPriority(ext.priority); s.priority = ext.priority; }
+      else conflicted = true;
+    }
+    if (ext.assignee !== s.assignee) {
+      if (assignee === s.assignee) { setAssignee(ext.assignee); s.assignee = ext.assignee; }
+      else conflicted = true;
+    }
+    if (conflicted) setConflict(true);
+    // Intentionally keyed on the item identity + updated_at, not the live form
+    // state — we want this to run once per *external* change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [existing?.id, existing?.updated_at]);
+
+  // Pull the current external values into the form, discarding the user's
+  // in-progress edits. Invoked only when they explicitly click "Reload".
+  function pullExternal() {
+    if (!existing) return;
+    const ext = {
+      title: existing.title,
+      description: existing.description ?? "",
+      status: existing.status,
+      priority: existing.priority,
+      assignee: existing.assignee,
+    };
+    setTitle(ext.title);
+    setDesc(ext.description);
+    setStatus(ext.status);
+    setPriority(ext.priority);
+    setAssignee(ext.assignee);
+    synced.current = { ...ext };
+    setConflict(false);
+  }
+
   const kind = existing?.kind ?? config.kind;
   const isIssue = kind === "issue";
   const crumb = existing ? seqId(existing.id) : `New ${kind}`;
@@ -99,6 +180,9 @@ export function ItemModal({
       const ok = await runMutation("Couldn’t save changes", async () => {
         if (existing.kind === "todo") await updateTodo(existing.id, fields);
         else await updateIssue(existing.id, fields);
+        // What we just wrote is the new baseline, so the post-save reload (which
+        // bumps updated_at) re-syncs cleanly instead of re-flagging a conflict.
+        synced.current = { ...fields };
         toast("Saved", `${seqId(existing.id)} · ${t}`);
         await reload();
       });
@@ -220,6 +304,15 @@ export function ItemModal({
         </div>
 
         <div className="idlg-body">
+          {existing && conflict && (
+            <div className="idlg-conflict" role="status">
+              <Icon name="activity" size={14} stroke="var(--amber)" />
+              <span>This item was changed elsewhere.</span>
+              <button type="button" className="idlg-conflict-action" onClick={pullExternal}>
+                Reload
+              </button>
+            </div>
+          )}
           <input
             ref={titleRef}
             className="idlg-title"
