@@ -236,7 +236,12 @@ function Pager({
   return (
     <div className="pager">
       <Tooltip label="Previous page">
-        <button className="pager-btn" disabled={page === 0} onClick={onPrev}>
+        <button
+          className="pager-btn"
+          aria-label="Previous page"
+          disabled={page === 0}
+          onClick={onPrev}
+        >
           <Icon name="chevron" size={14} style={{ transform: "rotate(180deg)" }} />
         </button>
       </Tooltip>
@@ -244,7 +249,12 @@ function Pager({
         {page + 1} / {pageCount}
       </span>
       <Tooltip label="Next page">
-        <button className="pager-btn" disabled={page >= pageCount - 1} onClick={onNext}>
+        <button
+          className="pager-btn"
+          aria-label="Next page"
+          disabled={page >= pageCount - 1}
+          onClick={onNext}
+        >
           <Icon name="chevron" size={14} />
         </button>
       </Tooltip>

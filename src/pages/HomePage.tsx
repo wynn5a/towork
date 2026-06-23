@@ -93,27 +93,44 @@ export function HomePage() {
             </div>
           ) : (
             <>
-              <div className="tabbar">
+              <div className="tabbar" role="tablist" aria-label="Filter items by status">
                 <button
+                  role="tab"
+                  id="home-tab-open"
+                  aria-selected={tab === "open"}
+                  aria-controls="home-tabpanel"
                   className={`tab${tab === "open" ? " active" : ""}`}
                   onClick={() => setTab("open")}
                 >
                   Open <Count>{open.length}</Count>
                 </button>
                 <button
+                  role="tab"
+                  id="home-tab-in-progress"
+                  aria-selected={tab === "in-progress"}
+                  aria-controls="home-tabpanel"
                   className={`tab${tab === "in-progress" ? " active" : ""}`}
                   onClick={() => setTab("in-progress")}
                 >
                   In Progress <Count>{inProgress.length}</Count>
                 </button>
                 <button
+                  role="tab"
+                  id="home-tab-done"
+                  aria-selected={tab === "done"}
+                  aria-controls="home-tabpanel"
                   className={`tab${tab === "done" ? " active" : ""}`}
                   onClick={() => setTab("done")}
                 >
                   Done <Count>{done.length}</Count>
                 </button>
               </div>
-              <div className="home-list">
+              <div
+                className="home-list"
+                id="home-tabpanel"
+                role="tabpanel"
+                aria-labelledby={`home-tab-${tab}`}
+              >
                 <ItemList
                   key={tab}
                   items={tab === "open" ? open : tab === "in-progress" ? inProgress : done}

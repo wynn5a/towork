@@ -107,13 +107,23 @@ export function ProjectPage() {
   const openEdit = (itemId: string, kind: ItemKind) =>
     ui.openItemModal({ kind, projectId: id, itemId });
 
-  const TabButton = ({ value, label, icon, count }: { value: Tab; label: string; icon: "todo" | "issue" | "activity"; count?: number }) => (
-    <button className={`tab${tab === value ? " active" : ""}`} onClick={() => setTab(value)}>
-      <Icon name={icon} size={15} />
-      {label}
-      {count !== undefined && <Count>{count}</Count>}
-    </button>
-  );
+  const TabButton = ({ value, label, icon, count }: { value: Tab; label: string; icon: "todo" | "issue" | "activity"; count?: number }) => {
+    const isActive = tab === value;
+    return (
+      <button
+        role="tab"
+        id={`project-tab-${value}`}
+        aria-selected={isActive}
+        aria-controls="project-tabpanel"
+        className={`tab${isActive ? " active" : ""}`}
+        onClick={() => setTab(value)}
+      >
+        <Icon name={icon} size={15} />
+        {label}
+        {count !== undefined && <Count>{count}</Count>}
+      </button>
+    );
+  };
 
   const kind: ItemKind = tab === "issues" ? "issue" : "todo";
   const activeItems = tab === "issues" ? issues : todos;
@@ -133,6 +143,8 @@ export function ProjectPage() {
           {tab !== "activity" && (
             <div className="seg" role="tablist" aria-label="Group by">
               <button
+                role="tab"
+                aria-selected={groupBy === "status"}
                 className={`seg-btn${groupBy === "status" ? " sel" : ""}`}
                 onClick={() => {
                   setGroupBy("status");
@@ -144,6 +156,8 @@ export function ProjectPage() {
                 Status
               </button>
               <button
+                role="tab"
+                aria-selected={groupBy === "date"}
                 className={`seg-btn${groupBy === "date" ? " sel" : ""}`}
                 onClick={() => {
                   setGroupBy("date");
@@ -159,6 +173,7 @@ export function ProjectPage() {
           <button
             className="icon-btn"
             title="More"
+            aria-label="More project actions"
             onClick={(e) => setMenu(anchorMenu(e.currentTarget as HTMLElement, 188, "right"))}
           >
             <Icon name="more" size={16} />
@@ -166,12 +181,17 @@ export function ProjectPage() {
         </div>
       </div>
 
-      <div className="tabbar">
+      <div className="tabbar" role="tablist" aria-label="Project views">
         <TabButton value="todos" label="Todos" icon="todo" count={todos.length} />
         <TabButton value="issues" label="Issues" icon="issue" count={issues.length} />
         <TabButton value="activity" label="Activity" icon="activity" />
       </div>
 
+      <div
+        id="project-tabpanel"
+        role="tabpanel"
+        aria-labelledby={`project-tab-${tab}`}
+      >
       {tab === "activity" ? (
         <ActivityTimeline projectId={id} />
       ) : (
@@ -179,10 +199,12 @@ export function ProjectPage() {
           <div className="page-head" style={{ marginBottom: 16 }}>
             <div className="ph-text">
               {buckets.length > 0 && (
-                <div className="tabbar tabbar--sub">
+                <div className="tabbar tabbar--sub" role="tablist" aria-label="Filter by group">
                   {buckets.map((b) => (
                     <button
                       key={b.key}
+                      role="tab"
+                      aria-selected={active?.key === b.key}
                       className={`tab${active?.key === b.key ? " active" : ""}`}
                       onClick={() => setSubTab(b.key)}
                     >
@@ -221,6 +243,7 @@ export function ProjectPage() {
           />
         </>
       )}
+      </div>
 
       {menu && (
         <Menu

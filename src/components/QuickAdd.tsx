@@ -168,7 +168,16 @@ export function QuickAdd() {
             : "Adding a todo — click for an issue (or type “issue ”)"
         }
       >
-        <button type="button" className={`qa-kind ${kind}`} onClick={toggleKind}>
+        <button
+          type="button"
+          className={`qa-kind ${kind}`}
+          aria-label={
+            kind === "issue"
+              ? "Filing an issue — switch to a todo"
+              : "Adding a todo — switch to an issue"
+          }
+          onClick={toggleKind}
+        >
           <Icon name={kind} size={16} />
         </button>
       </Tooltip>
