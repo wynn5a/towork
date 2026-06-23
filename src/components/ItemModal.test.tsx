@@ -122,6 +122,56 @@ describe("ItemModal error feedback", () => {
   });
 });
 
+describe("ItemModal status-change toast", () => {
+  beforeEach(() => {
+    currentTodo = { ...BASE_TODO };
+    updateTodo.mockReset();
+    updateTodo.mockResolvedValue(undefined);
+    vi.spyOn(console, "error").mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("emits a status-specific toast (not 'Saved') when the status changes on save", async () => {
+    const onClose = vi.fn();
+    renderModal(onClose);
+
+    // Wait for the fixture (an Open todo) to surface, then open the status menu
+    // and pick "In Progress" via its menu item.
+    await screen.findByDisplayValue("Existing todo");
+    fireEvent.click(screen.getByRole("button", { name: /Open/i }));
+    // Menu items render as plain divs (no role), so target the option by text.
+    fireEvent.click(await screen.findByText("In Progress"));
+
+    fireEvent.click(screen.getByRole("button", { name: /Save changes/i }));
+
+    // The status-specific toast (cycleStatus's "In progress" wording) shows,
+    // and the generic "Saved" toast does not.
+    expect(await screen.findByText("In progress")).toBeInTheDocument();
+    expect(screen.queryByText("Saved")).not.toBeInTheDocument();
+    await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
+  });
+
+  it("keeps the generic 'Saved' toast when only the title changes (no status change)", async () => {
+    const onClose = vi.fn();
+    renderModal(onClose);
+
+    const titleInput = (await screen.findByDisplayValue("Existing todo")) as HTMLInputElement;
+    fireEvent.change(titleInput, { target: { value: "Edited title" } });
+
+    fireEvent.click(screen.getByRole("button", { name: /Save changes/i }));
+
+    // No status change → the generic "Saved" toast, and no status-specific one.
+    expect(await screen.findByText("Saved")).toBeInTheDocument();
+    expect(screen.queryByText("In progress")).not.toBeInTheDocument();
+    expect(screen.queryByText("Marked done")).not.toBeInTheDocument();
+    expect(screen.queryByText("Reopened")).not.toBeInTheDocument();
+    await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
+  });
+});
+
 describe("ItemModal live-sync to external edits", () => {
   beforeEach(() => {
     currentTodo = { ...BASE_TODO };

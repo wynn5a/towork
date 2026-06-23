@@ -184,13 +184,26 @@ export function ItemModal({
     if (!t) return;
     const fields = { title: t, description: desc.trim(), status, priority, assignee };
     if (existing) {
+      // Did this save change the status? Compare against the last-synced baseline
+      // (what the item was before this save, accounting for any external value the
+      // live-sync effect silently adopted) — captured before we overwrite it below.
+      const statusChanged = status !== synced.current.status;
       const ok = await runMutation("Couldn’t save changes", async () => {
         if (existing.kind === "todo") await updateTodo(existing.id, fields);
         else await updateIssue(existing.id, fields);
         // What we just wrote is the new baseline, so the post-save reload (which
         // bumps updated_at) re-syncs cleanly instead of re-flagging a conflict.
         synced.current = { ...fields };
-        toast("Saved", `${seqId(existing.id)} · ${t}`);
+        // One toast per save: a status-specific toast (matching cycleStatus's
+        // wording/hue) when the status changed, otherwise the generic "Saved".
+        const body = `${seqId(existing.id)} · ${t}`;
+        if (statusChanged) {
+          if (status === "In Progress") toast("In progress", body, "accent");
+          else if (status === "Done") toast("Marked done", body, "green");
+          else toast("Reopened", body, "green");
+        } else {
+          toast("Saved", body);
+        }
         await reload();
       });
       // Keep the dialog open on failure so the user can retry without losing edits.
