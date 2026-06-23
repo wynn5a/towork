@@ -4,7 +4,7 @@ use serde_json::{json, Value};
 use crate::db::schema;
 use crate::models::{
     activity::ActivityLog, issue::Issue, normalize_assignee, normalize_priority, normalize_status,
-    todo::Todo, validate_item_type, validate_title, Actor,
+    todo::Todo, validate_item_type, validate_search_query, validate_title, Actor,
 };
 
 /// JSON-Schema tool definitions advertised to MCP clients.
@@ -352,9 +352,12 @@ pub fn call_tool(conn: &Connection, name: &str, args: Value) -> Result<Value, St
             Ok(text_result(json!({ "item_id": item_id, "ok": true })))
         }
         "search_items" => {
-            let query = require(&args, "query")?;
+            // Reject a blank/whitespace-only query before searching: an empty
+            // needle is a substring of every row, so it would otherwise return
+            // the entire dataset instead of a meaningful match.
+            let query = validate_search_query(require(&args, "query")?)?;
             let project_id = str_arg(&args, "project_id");
-            let (todos, issues) = schema::search_items(conn, query, project_id).map_err(|e| e.to_string())?;
+            let (todos, issues) = schema::search_items(conn, &query, project_id).map_err(|e| e.to_string())?;
             Ok(text_result(json!({ "todos": todos, "issues": issues })))
         }
         "get_activity" => {

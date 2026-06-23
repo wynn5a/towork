@@ -89,6 +89,18 @@ pub fn validate_title(title: &str) -> Result<String, String> {
     Ok(trimmed.to_string())
 }
 
+/// Validate a caller-supplied search query. Trims surrounding whitespace and
+/// returns the trimmed value, or `Err` when the trimmed query is empty so a
+/// blank / whitespace-only query is rejected rather than matched as a
+/// substring of every row (which would return the entire dataset).
+pub fn validate_search_query(query: &str) -> Result<String, String> {
+    let trimmed = query.trim();
+    if trimmed.is_empty() {
+        return Err("query must not be empty".into());
+    }
+    Ok(trimmed.to_string())
+}
+
 #[derive(Debug, Clone, Copy, serde::Serialize, serde::Deserialize, PartialEq)]
 pub enum Actor {
     User,
@@ -207,6 +219,23 @@ mod tests {
     #[test]
     fn validate_title_trims_surrounding_whitespace() {
         assert_eq!(validate_title("  hi  ").unwrap(), "hi");
+    }
+
+    #[test]
+    fn validate_search_query_rejects_blank() {
+        assert!(validate_search_query("").is_err());
+        assert!(validate_search_query("   ").is_err()); // whitespace-only
+        assert!(validate_search_query("\t\n").is_err()); // other whitespace
+    }
+
+    #[test]
+    fn validate_search_query_accepts_normal_query() {
+        assert_eq!(validate_search_query("milk").unwrap(), "milk");
+    }
+
+    #[test]
+    fn validate_search_query_trims_surrounding_whitespace() {
+        assert_eq!(validate_search_query("  milk  ").unwrap(), "milk");
     }
 
     #[test]
