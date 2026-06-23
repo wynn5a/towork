@@ -96,17 +96,25 @@ pub fn update_todo(
 #[tauri::command]
 pub fn complete_todo(state: State<'_, DbState>, id: String) -> Result<(), String> {
     let conn = state.conn.lock().map_err(|e| e.to_string())?;
+    // Read the current status BEFORE marking Done so the activity log records the
+    // real prior state (e.g. "In Progress"), not a hardcoded "Open".
+    let prior_status = schema::query_todo(&conn, &id)
+        .map_err(|e| e.to_string())?
+        .map(|t| t.status);
     schema::update_todo(&conn, &id, None, None, Some("Done"), None, None)
         .map_err(|e| e.to_string())?;
-    let activity = ActivityLog::new(
-        "Todo".into(),
-        id,
-        "Completed".into(),
-        Actor::User,
-        Some("Open".into()),
-        Some("Done".into()),
-    );
-    schema::insert_activity(&conn, &activity).map_err(|e| e.to_string())?;
+    // Skip a redundant "Completed" row if the item was already Done.
+    if prior_status.as_deref() != Some("Done") {
+        let activity = ActivityLog::new(
+            "Todo".into(),
+            id,
+            "Completed".into(),
+            Actor::User,
+            prior_status,
+            Some("Done".into()),
+        );
+        schema::insert_activity(&conn, &activity).map_err(|e| e.to_string())?;
+    }
     Ok(())
 }
 

@@ -674,6 +674,77 @@ mod tests {
         assert_eq!(query_issue(&conn, &i.id).unwrap().unwrap().status, "Open");
     }
 
+    /// Regression for "complete_* logs old status as Open even when In Progress".
+    /// The complete paths (GUI `complete_todo`/`complete_issue`, MCP
+    /// `complete_item`) read the item's CURRENT status via `query_todo`/
+    /// `query_issue` BEFORE marking it Done, and log that as the activity
+    /// `old_value`. This exercises the schema-level pieces that fix keys off:
+    /// 1) an "In Progress" item reports "In Progress" right before completion,
+    ///    so the captured prior status is real (not the old hardcoded "Open");
+    /// 2) a "Completed" activity row built from that prior status round-trips
+    ///    through `insert_activity`/`query_activity` with `old_value` ==
+    ///    "In Progress". (The command/MCP layer needs Tauri `State`/`DbState`
+    ///    and a live connection, so the bug's logic is proven here at the
+    ///    schema layer the fix actually relies on.)
+    #[test]
+    fn completing_in_progress_item_logs_real_prior_status_for_both_twins() {
+        let conn = test_conn();
+        let p = seed_project(&conn);
+
+        // ---- Todo twin ----
+        let t = Todo::new(p.id.clone(), "WIP todo".into(), None, None, None, None);
+        insert_todo(&conn, &t).unwrap();
+        update_todo(&conn, &t.id, None, None, Some("In Progress"), None, None).unwrap();
+
+        // The status the complete path reads just before marking Done.
+        let prior = query_todo(&conn, &t.id).unwrap().unwrap().status;
+        assert_eq!(prior, "In Progress");
+
+        update_todo(&conn, &t.id, None, None, Some("Done"), None, None).unwrap();
+        insert_activity(
+            &conn,
+            &ActivityLog::new(
+                "Todo".into(),
+                t.id.clone(),
+                "Completed".into(),
+                Actor::User,
+                Some(prior),
+                Some("Done".into()),
+            ),
+        )
+        .unwrap();
+        let logged = query_activity(&conn, Some(&t.id), None, None).unwrap();
+        let completed = logged.iter().find(|a| a.action == "Completed").unwrap();
+        assert_eq!(completed.old_value.as_deref(), Some("In Progress"));
+        assert_eq!(completed.new_value.as_deref(), Some("Done"));
+
+        // ---- Issue twin (mirror) ----
+        let i = Issue::new(p.id.clone(), "WIP issue".into(), None, None, None, None);
+        insert_issue(&conn, &i).unwrap();
+        update_issue(&conn, &i.id, None, None, Some("In Progress"), None, None).unwrap();
+
+        let prior_i = query_issue(&conn, &i.id).unwrap().unwrap().status;
+        assert_eq!(prior_i, "In Progress");
+
+        update_issue(&conn, &i.id, None, None, Some("Done"), None, None).unwrap();
+        insert_activity(
+            &conn,
+            &ActivityLog::new(
+                "Issue".into(),
+                i.id.clone(),
+                "Completed".into(),
+                Actor::User,
+                Some(prior_i),
+                Some("Done".into()),
+            ),
+        )
+        .unwrap();
+        let logged_i = query_activity(&conn, Some(&i.id), None, None).unwrap();
+        let completed_i = logged_i.iter().find(|a| a.action == "Completed").unwrap();
+        assert_eq!(completed_i.old_value.as_deref(), Some("In Progress"));
+        assert_eq!(completed_i.new_value.as_deref(), Some("Done"));
+    }
+
     #[test]
     fn query_todos_filters() {
         let conn = test_conn();

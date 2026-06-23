@@ -211,18 +211,34 @@ pub fn call_tool(conn: &Connection, name: &str, args: Value) -> Result<Value, St
             let item_type = require(&args, "item_type")?;
             match item_type {
                 "Todo" => {
+                    // Read the current status BEFORE marking Done so the activity log
+                    // records the real prior state (e.g. "In Progress"), not "Open".
+                    let prior_status = schema::query_todo(conn, &item_id)
+                        .map_err(|e| e.to_string())?
+                        .map(|t| t.status);
                     let rows = schema::update_todo(conn, &item_id, None, None, Some("Done"), None, None).map_err(|e| e.to_string())?;
                     if rows == 0 {
                         return Err(format!("no Todo with id {item_id}"));
                     }
-                    log(conn, "Todo", &item_id, "Completed", Actor::AI, Some("Open".into()), Some("Done".into()))?;
+                    // Skip a redundant "Completed" row if it was already Done.
+                    if prior_status.as_deref() != Some("Done") {
+                        log(conn, "Todo", &item_id, "Completed", Actor::AI, prior_status, Some("Done".into()))?;
+                    }
                 }
                 "Issue" => {
+                    // Read the current status BEFORE marking Done so the activity log
+                    // records the real prior state (e.g. "In Progress"), not "Open".
+                    let prior_status = schema::query_issue(conn, &item_id)
+                        .map_err(|e| e.to_string())?
+                        .map(|i| i.status);
                     let rows = schema::update_issue(conn, &item_id, None, None, Some("Done"), None, None).map_err(|e| e.to_string())?;
                     if rows == 0 {
                         return Err(format!("no Issue with id {item_id}"));
                     }
-                    log(conn, "Issue", &item_id, "Completed", Actor::AI, Some("Open".into()), Some("Done".into()))?;
+                    // Skip a redundant "Completed" row if it was already Done.
+                    if prior_status.as_deref() != Some("Done") {
+                        log(conn, "Issue", &item_id, "Completed", Actor::AI, prior_status, Some("Done".into()))?;
+                    }
                 }
                 _ => return Err("item_type must be Todo or Issue".into()),
             }
