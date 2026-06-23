@@ -130,7 +130,7 @@ export function buildSeqMap(projects: Project[], items: Item[]): Map<string, str
   for (const p of projects) {
     const arr = (byProject.get(p.id) ?? [])
       .slice()
-      .sort((a, b) => a.created_at.localeCompare(b.created_at));
+      .sort((a, b) => a.created_at.localeCompare(b.created_at) || a.id.localeCompare(b.id));
     const prefix = projectPrefix(p.name);
     arr.forEach((it, i) => map.set(it.id, `${prefix}-${i + 1}`));
   }
