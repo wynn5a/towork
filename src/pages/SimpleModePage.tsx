@@ -32,13 +32,14 @@ const TITLE_HANDOFF_LIMIT = 50;
  */
 export function SimpleModePage() {
   const { items, projects, reload, projectById } = useStore();
-  const { runMutation } = useItemActions();
+  const { runMutation, cycleStatus } = useItemActions();
   const ui = useUI();
   const navigate = useNavigate();
   const [text, setText] = useState("");
   const [focus, setFocus] = useState(false);
   // -1 = no active selection (default: caret in the input, Enter adds). >= 0 = an
-  // actively selected row, set by ↑/↓ (or hover), where Enter completes that row.
+  // actively selected row, set by ↑/↓ (or hover), where Enter advances that row to
+  // the next status (Open → In Progress → Done).
   const [sel, setSel] = useState(-1);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
@@ -135,8 +136,9 @@ export function SimpleModePage() {
   // otherwise just move the text caret. ↑/↓ preventDefault() so they move the LIST
   // selection, not the caret; ArrowDown from the default (-1) lands on the first
   // row. Enter is handled here ONLY when a row is actively selected (sel >= 0) —
-  // it completes that row and drops back to no-selection. With no active selection
-  // Enter is left alone so the input's own onKeyDown still runs add(). Escape
+  // it advances that row to the next status (Open → In Progress → Done) and drops
+  // back to no-selection. With no active selection Enter is left alone so the
+  // input's own onKeyDown still runs add(). Escape
   // clears an active selection (so the user can add again); a second Escape (or
   // Escape with nothing selected) exits.
   useEffect(() => {
@@ -155,8 +157,8 @@ export function SimpleModePage() {
         e.preventDefault();
         const t = openItems[sel];
         if (t) {
-          complete(t);
-          setSel(-1); // completed row leaves the list; return to "just typing"
+          cycleStatus(t); // advance one phase (Open → In Progress → Done)
+          setSel(-1); // return to "just typing"
         }
       } else if (e.key === "Escape") {
         if (sel >= 0) {
@@ -170,7 +172,7 @@ export function SimpleModePage() {
     };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, [openItems, sel, complete, exit]);
+  }, [openItems, sel, cycleStatus, exit]);
 
   return (
     <div className="simple">
@@ -211,8 +213,8 @@ export function SimpleModePage() {
           onBlur={() => setFocus(false)}
           onKeyDown={(e) => {
             // Enter adds only when no row is actively selected; when one is, the
-            // document handler completes it instead (this handler runs first, so
-            // bailing here lets that path win without a double action).
+            // document handler advances its status instead (this handler runs
+            // first, so bailing here lets that path win without a double action).
             if (e.key === "Enter" && sel < 0) {
               e.preventDefault();
               add();
@@ -268,7 +270,7 @@ export function SimpleModePage() {
           <b>↑↓</b> Navigate
         </span>
         <span>
-          <b>Enter</b> Complete
+          <b>Enter</b> Next phase
         </span>
         <span>
           <b>Esc</b> Exit
