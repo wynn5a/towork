@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useStore } from "../lib/store";
 import { useUI } from "../lib/ui";
@@ -6,6 +6,7 @@ import { useItemActions } from "../lib/actions";
 import { createProject, updateProject } from "../lib/tauri";
 import { Icon } from "../lib/icons";
 import { IconButton, Kbd } from "./ui";
+import { useFocusTrap } from "../lib/useFocusTrap";
 
 export function ProjectModal({
   projectId,
@@ -23,7 +24,12 @@ export function ProjectModal({
   const [name, setName] = useState(existing?.name ?? "");
   const [desc, setDesc] = useState(existing?.description ?? "");
   const nameRef = useRef<HTMLInputElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const titleId = useId();
+  useFocusTrap(dialogRef);
 
+  // The trap moves focus to the first focusable control (the close button) on
+  // open; override it here so the name field is focused for typing.
   useEffect(() => {
     nameRef.current?.focus();
   }, []);
@@ -70,13 +76,21 @@ export function ProjectModal({
 
   return (
     <div className="overlay open" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="dialog" role="dialog" aria-modal="true" style={{ width: 460 }}>
+      <div
+        ref={dialogRef}
+        className="dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        tabIndex={-1}
+        style={{ width: 460 }}
+      >
         <div className="dlg-head">
           <span className="dlg-ic">
             <Icon name={existing ? "edit" : "folderPlus"} size={16} />
           </span>
           <div className="dh-text">
-            <div className="dlg-title">{existing ? "Edit project" : "New project"}</div>
+            <div className="dlg-title" id={titleId}>{existing ? "Edit project" : "New project"}</div>
             <div className="dlg-sub">
               {existing
                 ? "Update name and description."

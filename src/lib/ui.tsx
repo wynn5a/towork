@@ -50,6 +50,13 @@ export function UIProvider({ children }: { children: ReactNode }) {
   const confirmDeleteProject = useCallback((project: Project) => setProjectToDelete(project), []);
   const confirm = useCallback((opts: ConfirmOptions) => setConfirmOpts(opts), []);
 
+  // True when any dialog/overlay is open. The dialogs render as siblings of the
+  // app content below, so marking the content wrapper `inert` takes the whole
+  // background out of the tab order and the accessibility tree (matching
+  // `aria-modal`) without ever inerting the active dialog itself.
+  const anyOverlayOpen =
+    palette || !!projectModal || !!itemModal || !!projectToDelete || !!confirmOpts;
+
   const value = useMemo<UICtx>(
     () => ({
       openCommandPalette: () => setPalette(true),
@@ -58,15 +65,18 @@ export function UIProvider({ children }: { children: ReactNode }) {
       openItemModal: (config) => setItemModal(config),
       confirmDeleteProject,
       confirm,
-      isAnyOverlayOpen: () =>
-        palette || !!projectModal || !!itemModal || !!projectToDelete || !!confirmOpts,
+      isAnyOverlayOpen: () => anyOverlayOpen,
     }),
-    [confirmDeleteProject, confirm, palette, projectModal, itemModal, projectToDelete, confirmOpts]
+    [confirmDeleteProject, confirm, anyOverlayOpen]
   );
 
   return (
     <Ctx.Provider value={value}>
-      {children}
+      {/* React 19 forwards the `inert` attribute; while a dialog is open the
+          whole app background is inert so background controls can't be tabbed
+          or read by a screen reader. The dialog layer below is outside this
+          wrapper, so the active dialog is never inerted. */}
+      <div inert={anyOverlayOpen ? true : undefined}>{children}</div>
       {palette && <CommandPalette onClose={() => setPalette(false)} />}
       {projectModal && (
         <ProjectModal

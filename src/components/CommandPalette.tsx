@@ -4,6 +4,7 @@ import { useStore } from "../lib/store";
 import { useUI } from "../lib/ui";
 import { Icon, type IconName } from "../lib/icons";
 import { Kbd } from "./ui";
+import { useFocusTrap } from "../lib/useFocusTrap";
 
 interface Action {
   group: string;
@@ -22,6 +23,8 @@ export function CommandPalette({ onClose }: { onClose: () => void }) {
   const [active, setActive] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(dialogRef);
 
   useEffect(() => {
     inputRef.current?.focus();
@@ -123,7 +126,14 @@ export function CommandPalette({ onClose }: { onClose: () => void }) {
       className="palette-overlay open"
       onMouseDown={(e) => e.target === e.currentTarget && onClose()}
     >
-      <div className="palette" role="dialog" aria-modal="true">
+      <div
+        ref={dialogRef}
+        className="palette"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Command palette"
+        tabIndex={-1}
+      >
         <div className="pq">
           <Icon name="search" size={17} stroke="var(--text-3)" />
           <input

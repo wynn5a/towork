@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { Icon, type IconName } from "../lib/icons";
 import { useStore } from "../lib/store";
+import { useFocusTrap } from "../lib/useFocusTrap";
 
 export function ConfirmDialog({
   title,
@@ -22,6 +23,9 @@ export function ConfirmDialog({
   onClose: () => void;
 }) {
   const { toast } = useStore();
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const titleId = useId();
+  useFocusTrap(dialogRef);
   // While a confirm is in flight, the button is disabled and re-entry is
   // ignored — a fast double-click can't fire the destructive action twice.
   const [pending, setPending] = useState(false);
@@ -64,13 +68,21 @@ export function ConfirmDialog({
 
   return (
     <div className="overlay open" onMouseDown={(e) => e.target === e.currentTarget && cancel()}>
-      <div className="dialog" role="dialog" aria-modal="true" style={{ width: 420 }}>
+      <div
+        ref={dialogRef}
+        className="dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        tabIndex={-1}
+        style={{ width: 420 }}
+      >
         <div className="dlg-head">
           <span className="dlg-ic" style={{ background: chipBg, color: toneColor }}>
             <Icon name={icon} size={16} />
           </span>
           <div className="dh-text">
-            <div className="dlg-title">{title}</div>
+            <div className="dlg-title" id={titleId}>{title}</div>
             <div className="dlg-sub">{message}</div>
           </div>
         </div>

@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
+import { useEffect, useId, useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
 import type { Assignee, ItemKind, Priority, Status } from "../lib/types";
 import { useStore } from "../lib/store";
+import { useFocusTrap } from "../lib/useFocusTrap";
 import {
   createIssue,
   createTodo,
@@ -73,6 +74,12 @@ export function ItemModal({
 
   const titleRef = useRef<HTMLInputElement>(null);
   const descRef = useRef<HTMLTextAreaElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const labelId = useId();
+  // Trap Tab focus within the dialog and restore focus on close. The mount
+  // effect below re-focuses the title/description (the trap's initial focus is
+  // overridden), so editing starts in the right field.
+  useFocusTrap(dialogRef);
   useEffect(() => {
     // On handoff from a quick-add input the typed text lands in the description,
     // so keep the caret there (at the end) where the user was typing. Otherwise
@@ -277,7 +284,14 @@ export function ItemModal({
   return (
     <>
       <div className="overlay open" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-        <div className="dialog issue-dialog" role="dialog" aria-modal="true">
+        <div
+          ref={dialogRef}
+          className="dialog issue-dialog"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby={labelId}
+          tabIndex={-1}
+        >
         <div className="idlg-head">
           <span className="idlg-crumb">
             <span className="idlg-badge">
@@ -288,7 +302,7 @@ export function ItemModal({
           <span className="idlg-arrow">
             <Icon name="chevron" size={13} />
           </span>
-          <span className="idlg-context">{crumb}</span>
+          <span className="idlg-context" id={labelId}>{crumb}</span>
           <div className="idlg-head-actions">
             {existing && (
               <IconButton
