@@ -14,13 +14,20 @@ interface Action {
   run: () => void;
 }
 
+/** Stable identity for an action, independent of its position in the list.
+ *  `group + label` uniquely identifies every action we build (the static
+ *  commands plus one row per project, whose names are unique). We remember the
+ *  selected row by this key so that when the `filtered` list changes underneath
+ *  the open palette — e.g. the AI adds or deletes a project — Enter still fires
+ *  the row the user is looking at, never whatever now sits at the old index. */
+const actionKey = (a: Action) => `${a.group} ${a.label}`;
+
 export function CommandPalette({ onClose }: { onClose: () => void }) {
   const { projects } = useStore();
   const ui = useUI();
   const navigate = useNavigate();
   const loc = useLocation();
   const [query, setQuery] = useState("");
-  const [active, setActive] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
@@ -94,9 +101,32 @@ export function CommandPalette({ onClose }: { onClose: () => void }) {
     );
   }, [actions, query]);
 
+  // Keep the selection pinned to its row by identity, not by bare position.
+  // `selectedKey` is the stable key of the chosen action; `active` (the index
+  // the rest of the component uses) is *derived* from it against the current
+  // `filtered` list. So when the list changes underneath the open palette (a
+  // project added/removed by the AI, or the query narrowing results) the
+  // selection follows its row — Enter can never fire whatever now sits at the
+  // old index. If the remembered row is gone, the selection falls back to the
+  // first item.
+  const [selectedKey, setSelectedKey] = useState<string | null>(null);
+  const resolved = selectedKey === null ? -1 : filtered.findIndex((a) => actionKey(a) === selectedKey);
+  const active = resolved !== -1 ? resolved : 0;
+
+  // Move the selection by index (keyboard / mouse): translate the target index
+  // back to a stable key so the derivation above tracks it across list changes.
+  const selectIndex = (i: number) => {
+    const a = filtered[i];
+    if (a) setSelectedKey(actionKey(a));
+  };
+
+  // Scroll the active row into view as the selection moves (keyboard nav can
+  // push it past the visible `.pbody` window). `bodyRef` holds the scroll
+  // container; the active `.pitem` is the only one carrying the `active` class.
   useEffect(() => {
-    if (active >= filtered.length) setActive(0);
-  }, [filtered, active]);
+    const el = bodyRef.current?.querySelector<HTMLElement>(".pitem.active");
+    el?.scrollIntoView({ block: "nearest" });
+  }, [active]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -105,10 +135,10 @@ export function CommandPalette({ onClose }: { onClose: () => void }) {
         onClose();
       } else if (e.key === "ArrowDown") {
         e.preventDefault();
-        setActive((i) => Math.min(filtered.length - 1, i + 1));
+        selectIndex(Math.min(filtered.length - 1, active + 1));
       } else if (e.key === "ArrowUp") {
         e.preventDefault();
-        setActive((i) => Math.max(0, i - 1));
+        selectIndex(Math.max(0, active - 1));
       } else if (e.key === "Enter") {
         e.preventDefault();
         filtered[active]?.run();
@@ -142,7 +172,9 @@ export function CommandPalette({ onClose }: { onClose: () => void }) {
             value={query}
             onChange={(e) => {
               setQuery(e.target.value);
-              setActive(0);
+              // Reset the highlight to the top result as the query changes
+              // (clearing the remembered key falls `active` back to index 0).
+              setSelectedKey(null);
             }}
           />
           <Kbd keys="esc" />
@@ -153,11 +185,11 @@ export function CommandPalette({ onClose }: { onClose: () => void }) {
             const header = a.group !== lastGroup ? a.group : null;
             lastGroup = a.group;
             return (
-              <div key={`${a.group}-${a.label}-${i}`}>
+              <div key={actionKey(a)}>
                 {header && <div className="pgroup">{header}</div>}
                 <div
                   className={`pitem${i === active ? " active" : ""}`}
-                  onMouseEnter={() => setActive(i)}
+                  onMouseEnter={() => selectIndex(i)}
                   onClick={() => a.run()}
                 >
                   <span className="pi-ic">
