@@ -900,6 +900,45 @@ mod tests {
         assert_eq!(query_activity(&conn, None, None, Some(1)).unwrap().len(), 1);
     }
 
+    /// Regression: `query_activity` with a `LIMIT` must return at most N rows,
+    /// and those must be the N most recent (the MCP `get_activity` tool and the
+    /// Home sidebar both rely on newest-first so a small limit yields the latest
+    /// activity, not the oldest). The handler defaults the limit to 50 to stop
+    /// an unscoped call serializing the entire, ever-growing log.
+    #[test]
+    fn activity_limit_returns_most_recent_n() {
+        let conn = test_conn();
+        // Insert 5 rows with explicit, increasing timestamps so newest-first
+        // ordering is deterministic (rows created in a tight loop could
+        // otherwise share a sub-second `created_at`).
+        for i in 0..5 {
+            let mut log = ActivityLog::new(
+                "Todo".into(),
+                format!("item-{i}"),
+                "Created".into(),
+                Actor::User,
+                None,
+                None,
+            );
+            log.created_at = format!("2026-01-01T00:00:0{i}Z");
+            insert_activity(&conn, &log).unwrap();
+        }
+
+        // No limit: all rows.
+        assert_eq!(query_activity(&conn, None, None, None).unwrap().len(), 5);
+
+        // Limit caps the count.
+        let limited = query_activity(&conn, None, None, Some(3)).unwrap();
+        assert_eq!(limited.len(), 3);
+
+        // ...and yields the most recent rows, newest first (item-4, 3, 2).
+        let ids: Vec<&str> = limited.iter().map(|a| a.item_id.as_str()).collect();
+        assert_eq!(ids, vec!["item-4", "item-3", "item-2"]);
+
+        // A limit larger than the row count returns everything (no padding).
+        assert_eq!(query_activity(&conn, None, None, Some(100)).unwrap().len(), 5);
+    }
+
     #[test]
     fn activity_for_project_scopes_to_items() {
         let conn = test_conn();

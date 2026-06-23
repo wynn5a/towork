@@ -101,12 +101,13 @@ pub fn list_tools() -> Value {
         },
         {
             "name": "get_activity",
-            "description": "Get the activity log, optionally scoped to an item or item_type.",
+            "description": "Get the activity log (newest first), optionally scoped to an item or item_type. Returns at most `limit` rows; `limit` defaults to 50 to avoid serializing the entire, ever-growing log.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
                     "item_id": { "type": "string" },
-                    "item_type": { "type": "string", "enum": ["Todo", "Issue"] }
+                    "item_type": { "type": "string", "enum": ["Todo", "Issue"] },
+                    "limit": { "type": "integer", "minimum": 1, "description": "Maximum number of most-recent rows to return. Defaults to 50." }
                 }
             }
         }
@@ -368,7 +369,26 @@ pub fn call_tool(conn: &Connection, name: &str, args: Value) -> Result<Value, St
             if item_type.is_some() {
                 validate_item_type(item_type)?;
             }
-            let activities = schema::query_activity(conn, item_id, item_type, None).map_err(|e| e.to_string())?;
+            // Cap the result so an unscoped call doesn't serialize the entire,
+            // ever-growing activity_log. Default to 50 most-recent rows when
+            // `limit` is absent. A present-but-non-positive value (0, negative,
+            // or a non-integer like 1.5) is a client error, not silently
+            // coerced — `as_u64()` already rejects negatives and floats, so we
+            // only need to additionally reject 0.
+            let limit: i64 = match args.get("limit") {
+                None => 50,
+                Some(v) => {
+                    let n = v
+                        .as_u64()
+                        .filter(|&n| n > 0)
+                        .ok_or("limit must be a positive integer")?;
+                    // Cap absurd values so a stray huge limit can't dump the
+                    // whole log; 1000 is far beyond any UI's needs.
+                    n.min(1000) as i64
+                }
+            };
+            let activities = schema::query_activity(conn, item_id, item_type, Some(limit))
+                .map_err(|e| e.to_string())?;
             Ok(text_result(json!(activities)))
         }
         other => Err(format!("unknown tool: {other}")),
