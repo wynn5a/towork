@@ -911,6 +911,10 @@ textarea.input { resize: vertical; min-height: 64px; line-height: 1.55; }
 /* overflow / context menu */
 .menu {
   position: fixed; z-index: 130; width: 188px; padding: 5px; border-radius: 10px; display: none;
+  /* Cap height like .dialog so a long project list stays reachable: scroll
+     rather than running off the viewport. anchorMenu flips/clamps top to keep
+     this window on-screen; the cap is the safety net when it's tall regardless. */
+  max-height: min(60vh, 420px); overflow-y: auto;
   background: color-mix(in srgb, var(--bg-elevated) 78%, transparent);
   backdrop-filter: blur(30px) saturate(1.4); -webkit-backdrop-filter: blur(30px) saturate(1.4);
   border: 1px solid var(--border-strong); box-shadow: var(--shadow-pop);

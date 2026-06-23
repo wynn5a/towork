@@ -19,11 +19,44 @@ export interface MenuPos {
   width?: number;
 }
 
-/** Compute a menu position anchored to (and right-aligned under) an element. */
-export function anchorMenu(el: HTMLElement, width = 188, align: "left" | "right" = "left"): MenuPos {
+/**
+ * Compute a menu position anchored to (and optionally right-aligned under) an
+ * element. Opens downward by default, but — like `Tooltip` — flips above the
+ * anchor when a downward menu of `estHeight` would run off the viewport bottom,
+ * then clamps `top` to the viewport with an 8px pad. The CSS `max-height` on
+ * `.menu` scrolls anything still too tall after flipping. `estHeight` is an
+ * estimate (the menu hasn't rendered yet); the clamp + scroll keep it on-screen
+ * regardless of the exact measurement.
+ */
+export function anchorMenu(
+  el: HTMLElement,
+  width = 188,
+  align: "left" | "right" = "left",
+  estHeight = 280,
+): MenuPos {
   const r = el.getBoundingClientRect();
+  const gap = 6;
+  const pad = 8;
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+
   const left = align === "right" ? r.right - width : r.left;
-  return { top: r.bottom + 6, left: Math.max(12, left), width };
+
+  // Prefer below the anchor; flip above when below would overflow and above has
+  // more room. Then clamp into the viewport so the top edge is always reachable.
+  const below = r.bottom + gap;
+  const above = r.top - estHeight - gap;
+  let top = below;
+  if (below + estHeight > vh - pad && r.top > vh - r.bottom) top = above;
+  top = Math.max(pad, Math.min(top, vh - estHeight - pad));
+  // Never let the clamp push the menu off the top edge on very short viewports.
+  if (top < pad) top = pad;
+
+  return {
+    top,
+    left: Math.max(pad, Math.min(left, vw - width - pad)),
+    width,
+  };
 }
 
 export function Menu({
