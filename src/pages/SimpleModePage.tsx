@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useStore } from "../lib/store";
 import { completeIssue, completeTodo, createIssue, createTodo } from "../lib/tauri";
@@ -16,7 +16,19 @@ const TITLE_HANDOFF_LIMIT = 50;
 
 /**
  * Simple Mode — a distraction-free flat list of open todos and issues across all
- * projects, sorted High → Low. Keyboard: ↑/↓ navigate, Enter completes, Esc / double-Control exits.
+ * projects, sorted High → Low.
+ *
+ * Keyboard model (Enter is disambiguated by whether a row is *actively* selected):
+ *   - ↑/↓ establish/move the active selection and work from anywhere — they're
+ *     bound at the document level so they drive the list even while the add input
+ *     is focused (the default), and `preventDefault()` keeps them from moving the
+ *     text caret.
+ *   - Enter with an active row (sel >= 0) COMPLETES that row; Enter with no active
+ *     selection (sel === -1, the default while typing) runs add() — handled by the
+ *     input's own onKeyDown so plain typing + Enter still files a todo.
+ *   - Typing in the input, or pressing Escape, clears the active selection so the
+ *     user can immediately add again. Esc with no active selection exits.
+ *   - Esc / double-Control exit the mode.
  */
 export function SimpleModePage() {
   const { items, projects, reload, projectById } = useStore();
@@ -25,8 +37,11 @@ export function SimpleModePage() {
   const navigate = useNavigate();
   const [text, setText] = useState("");
   const [focus, setFocus] = useState(false);
-  const [sel, setSel] = useState(0);
+  // -1 = no active selection (default: caret in the input, Enter adds). >= 0 = an
+  // actively selected row, set by ↑/↓ (or hover), where Enter completes that row.
+  const [sel, setSel] = useState(-1);
   const inputRef = useRef<HTMLInputElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
 
   const exit = () => navigate("/");
   useDoubleControl(exit);
@@ -46,9 +61,20 @@ export function SimpleModePage() {
       exitSimpleWindow();
     };
   }, []);
+  // Keep the active selection in range as the list shrinks (e.g. an item is
+  // completed or the AI mutates concurrently). -1 (no active selection) is left
+  // untouched — only an out-of-range *active* index is reeled back to the last row.
   useEffect(() => {
-    if (sel >= openItems.length) setSel(Math.max(0, openItems.length - 1));
+    if (sel >= openItems.length) setSel(openItems.length - 1);
   }, [openItems.length, sel]);
+
+  // Scroll the actively selected row into view as the selection moves — keyboard
+  // nav can push it past the visible window. Only runs when a row is active.
+  useEffect(() => {
+    if (sel < 0) return;
+    const el = listRef.current?.querySelector<HTMLElement>(".simple-row.sel");
+    el?.scrollIntoView({ block: "nearest" });
+  }, [sel]);
 
   /** Resolve the kind + destination project + clean title, honoring a leading
    *  `issue`/`todo` keyword and `#project` routing. Mirrors QuickAdd's parsing —
@@ -104,24 +130,50 @@ export function SimpleModePage() {
     });
   }
 
-  function onListKey(e: ReactKeyboardEvent) {
-    if (e.key === "ArrowDown") {
-      e.preventDefault();
-      setSel((i) => Math.min(i + 1, openItems.length - 1));
-    } else if (e.key === "ArrowUp") {
-      e.preventDefault();
-      setSel((i) => Math.max(i - 1, 0));
-    } else if (e.key === "Enter") {
-      e.preventDefault();
-      const t = openItems[sel];
-      if (t) complete(t);
-    } else if (e.key === "Escape") {
-      exit();
-    }
-  }
+  // List navigation lives at the document level so ↑/↓ drive the list from any
+  // focus — crucially while the add input is focused (the default), where they'd
+  // otherwise just move the text caret. ↑/↓ preventDefault() so they move the LIST
+  // selection, not the caret; ArrowDown from the default (-1) lands on the first
+  // row. Enter is handled here ONLY when a row is actively selected (sel >= 0) —
+  // it completes that row and drops back to no-selection. With no active selection
+  // Enter is left alone so the input's own onKeyDown still runs add(). Escape
+  // clears an active selection (so the user can add again); a second Escape (or
+  // Escape with nothing selected) exits.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "ArrowDown") {
+        if (openItems.length === 0) return;
+        e.preventDefault();
+        setSel((i) => Math.min(i + 1, openItems.length - 1));
+      } else if (e.key === "ArrowUp") {
+        if (openItems.length === 0) return;
+        e.preventDefault();
+        // From the default (-1) this clamps to 0; from row 0 it stays put.
+        setSel((i) => Math.max(i <= 0 ? 0 : i - 1, 0));
+      } else if (e.key === "Enter") {
+        if (sel < 0) return; // no active row — let the input's onKeyDown add()
+        e.preventDefault();
+        const t = openItems[sel];
+        if (t) {
+          complete(t);
+          setSel(-1); // completed row leaves the list; return to "just typing"
+        }
+      } else if (e.key === "Escape") {
+        if (sel >= 0) {
+          // Clear the active selection first so the user can immediately add again.
+          e.preventDefault();
+          setSel(-1);
+        } else {
+          exit();
+        }
+      }
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [openItems, sel, complete, exit]);
 
   return (
-    <div className="simple" tabIndex={0} onKeyDown={onListKey}>
+    <div className="simple">
       <div className="simple-head">
         <span className="mode-tag">
           <Icon name="target" size={13} />
@@ -145,6 +197,9 @@ export function SimpleModePage() {
           value={text}
           placeholder="Add a todo…  use #project to route it · prefix with issue to file one"
           onChange={(e) => {
+            // Editing the text returns the user to "just typing" — drop any active
+            // row selection so the next Enter adds again rather than completing.
+            setSel(-1);
             const v = e.target.value;
             if (v.length > TITLE_HANDOFF_LIMIT) {
               handoffToDialog(v);
@@ -155,7 +210,10 @@ export function SimpleModePage() {
           onFocus={() => setFocus(true)}
           onBlur={() => setFocus(false)}
           onKeyDown={(e) => {
-            if (e.key === "Enter") {
+            // Enter adds only when no row is actively selected; when one is, the
+            // document handler completes it instead (this handler runs first, so
+            // bailing here lets that path win without a double action).
+            if (e.key === "Enter" && sel < 0) {
               e.preventDefault();
               add();
             }
@@ -163,7 +221,7 @@ export function SimpleModePage() {
         />
       </div>
 
-      <div className="simple-list">
+      <div className="simple-list" ref={listRef}>
         {openItems.length === 0 ? (
           <div className="page-sub" style={{ textAlign: "center", padding: "48px 0" }}>
             No open items. Add one above.
