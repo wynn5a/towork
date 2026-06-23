@@ -70,7 +70,7 @@ pub fn is_mutating(req: &Value) -> bool {
     }
     matches!(
         req.pointer("/params/name").and_then(|v| v.as_str()),
-        Some("create_item") | Some("update_item") | Some("complete_item")
+        Some("create_item") | Some("update_item") | Some("complete_item") | Some("delete_item")
     )
 }
 

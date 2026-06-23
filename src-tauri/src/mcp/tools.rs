@@ -76,6 +76,18 @@ pub fn list_tools() -> Value {
             }
         },
         {
+            "name": "delete_item",
+            "description": "PERMANENTLY delete a todo or issue. This is IRREVERSIBLE: there is NO undo, NO trash, and NO confirmation prompt — unlike the GUI, which double-confirms before deleting. The item and its data are removed immediately. Use this deliberately and only when you are certain the item should be gone; prefer complete_item or update_item to close or amend an item you might still need.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "item_id": { "type": "string" },
+                    "item_type": { "type": "string", "enum": ["Todo", "Issue"] }
+                },
+                "required": ["item_id", "item_type"]
+            }
+        },
+        {
             "name": "search_items",
             "description": "Search todos and issues by title/description across all projects (or within one).",
             "inputSchema": {
@@ -269,6 +281,48 @@ pub fn call_tool(conn: &Connection, name: &str, args: Value) -> Result<Value, St
                 _ => return Err("item_type must be Todo or Issue".into()),
             }
             Ok(text_result(json!({ "ok": true, "item_id": item_id, "status": "Done" })))
+        }
+        "delete_item" => {
+            let item_id = require(&args, "item_id")?.to_string();
+            let item_type = require(&args, "item_type")?;
+            // Capture the title and owning project BEFORE deleting so the
+            // activity entry is meaningful and stays project-scoped.
+            // `activity_log.item_id` has no FK to the item table, so the row
+            // survives the delete — but the item's `project_id` would be
+            // unrecoverable afterwards, so we stamp it onto the activity here.
+            // Mirrors the GUI delete path, logged as AI rather than User.
+            match item_type {
+                "Todo" => {
+                    let existing = schema::query_todo(conn, &item_id).map_err(|e| e.to_string())?;
+                    let title = existing.as_ref().map(|t| t.title.clone());
+                    let project_id = existing.map(|t| t.project_id);
+                    let rows = schema::delete_todo(conn, &item_id).map_err(|e| e.to_string())?;
+                    if rows == 0 {
+                        return Err(format!("no Todo with id {item_id}"));
+                    }
+                    let mut activity = ActivityLog::new("Todo".into(), item_id.clone(), "Deleted".into(), Actor::AI, None, title);
+                    if let Some(pid) = project_id {
+                        activity = activity.with_project(pid);
+                    }
+                    schema::insert_activity(conn, &activity).map_err(|e| e.to_string())?;
+                }
+                "Issue" => {
+                    let existing = schema::query_issue(conn, &item_id).map_err(|e| e.to_string())?;
+                    let title = existing.as_ref().map(|i| i.title.clone());
+                    let project_id = existing.map(|i| i.project_id);
+                    let rows = schema::delete_issue(conn, &item_id).map_err(|e| e.to_string())?;
+                    if rows == 0 {
+                        return Err(format!("no Issue with id {item_id}"));
+                    }
+                    let mut activity = ActivityLog::new("Issue".into(), item_id.clone(), "Deleted".into(), Actor::AI, None, title);
+                    if let Some(pid) = project_id {
+                        activity = activity.with_project(pid);
+                    }
+                    schema::insert_activity(conn, &activity).map_err(|e| e.to_string())?;
+                }
+                _ => return Err("item_type must be Todo or Issue".into()),
+            }
+            Ok(text_result(json!({ "item_id": item_id, "ok": true })))
         }
         "search_items" => {
             let query = require(&args, "query")?;

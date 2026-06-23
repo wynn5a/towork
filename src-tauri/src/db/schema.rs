@@ -216,9 +216,12 @@ pub fn update_todo(
     Ok(rows)
 }
 
-pub fn delete_todo(conn: &rusqlite::Connection, id: &str) -> anyhow::Result<()> {
-    conn.execute("DELETE FROM todos WHERE id = ?1", params![id])?;
-    Ok(())
+/// Returns the number of rows deleted: `0` if no todo has the given id, or `1`
+/// when one was removed. Callers can treat `0` as "not found" — this is what
+/// lets the MCP `delete_item` tool reject a stale or typo'd id.
+pub fn delete_todo(conn: &rusqlite::Connection, id: &str) -> anyhow::Result<usize> {
+    let rows = conn.execute("DELETE FROM todos WHERE id = ?1", params![id])?;
+    Ok(rows)
 }
 
 /* ------------------------------ issues ------------------------------ */
@@ -355,9 +358,11 @@ pub fn update_issue(
     Ok(rows)
 }
 
-pub fn delete_issue(conn: &rusqlite::Connection, id: &str) -> anyhow::Result<()> {
-    conn.execute("DELETE FROM issues WHERE id = ?1", params![id])?;
-    Ok(())
+/// Returns the number of rows deleted: `0` if no issue has the given id, or `1`
+/// when one was removed. See `delete_todo` for the "not found" rationale.
+pub fn delete_issue(conn: &rusqlite::Connection, id: &str) -> anyhow::Result<usize> {
+    let rows = conn.execute("DELETE FROM issues WHERE id = ?1", params![id])?;
+    Ok(rows)
 }
 
 /* ---------------------------- activity log -------------------------- */
@@ -626,6 +631,32 @@ mod tests {
             update_issue(&conn, &i.id, None, None, Some("Done"), None, None).unwrap(),
             1
         );
+    }
+
+    /// Regression: `delete_todo`/`delete_issue` must report how many rows were
+    /// removed so callers can detect a missing id. Deleting a non-existent id
+    /// returns `Ok(0)` (nothing matched); deleting an existing id returns
+    /// `Ok(1)`. This is what lets the MCP `delete_item` tool reject a stale or
+    /// typo'd id instead of falsely reporting success.
+    #[test]
+    fn delete_affected_rows_signals_missing_id_for_both_twins() {
+        let conn = test_conn();
+        let p = seed_project(&conn);
+
+        // Non-existent ids match nothing.
+        assert_eq!(delete_todo(&conn, "nope-123").unwrap(), 0);
+        assert_eq!(delete_issue(&conn, "nope-xyz").unwrap(), 0);
+
+        // Existing ids delete exactly one row.
+        let t = Todo::new(p.id.clone(), "Real todo".into(), None, None, None, None);
+        insert_todo(&conn, &t).unwrap();
+        assert_eq!(delete_todo(&conn, &t.id).unwrap(), 1);
+        assert!(query_todo(&conn, &t.id).unwrap().is_none());
+
+        let i = Issue::new(p.id.clone(), "Real issue".into(), None, None, None, None);
+        insert_issue(&conn, &i).unwrap();
+        assert_eq!(delete_issue(&conn, &i.id).unwrap(), 1);
+        assert!(query_issue(&conn, &i.id).unwrap().is_none());
     }
 
     /// Regression: creating an item with status "In Progress" must persist it
