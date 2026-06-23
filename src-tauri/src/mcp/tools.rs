@@ -184,14 +184,20 @@ pub fn call_tool(conn: &Connection, name: &str, args: Value) -> Result<Value, St
             match item_type {
                 "Todo" => {
                     let old = schema::query_todo(conn, &item_id).map_err(|e| e.to_string())?;
-                    schema::update_todo(conn, &item_id, title.as_deref(), description.as_deref(), status.as_deref(), priority.as_deref(), assignee.as_deref()).map_err(|e| e.to_string())?;
+                    let rows = schema::update_todo(conn, &item_id, title.as_deref(), description.as_deref(), status.as_deref(), priority.as_deref(), assignee.as_deref()).map_err(|e| e.to_string())?;
+                    if rows == 0 {
+                        return Err(format!("no Todo with id {item_id}"));
+                    }
                     if let Some(o) = old {
                         log_changes(conn, "Todo", &item_id, &o.status, &o.priority, &o.assignee, &status, &priority, &assignee, &title, &description)?;
                     }
                 }
                 "Issue" => {
                     let old = schema::query_issue(conn, &item_id).map_err(|e| e.to_string())?;
-                    schema::update_issue(conn, &item_id, title.as_deref(), description.as_deref(), status.as_deref(), priority.as_deref(), assignee.as_deref()).map_err(|e| e.to_string())?;
+                    let rows = schema::update_issue(conn, &item_id, title.as_deref(), description.as_deref(), status.as_deref(), priority.as_deref(), assignee.as_deref()).map_err(|e| e.to_string())?;
+                    if rows == 0 {
+                        return Err(format!("no Issue with id {item_id}"));
+                    }
                     if let Some(o) = old {
                         log_changes(conn, "Issue", &item_id, &o.status, &o.priority, &o.assignee, &status, &priority, &assignee, &title, &description)?;
                     }
@@ -205,11 +211,17 @@ pub fn call_tool(conn: &Connection, name: &str, args: Value) -> Result<Value, St
             let item_type = require(&args, "item_type")?;
             match item_type {
                 "Todo" => {
-                    schema::update_todo(conn, &item_id, None, None, Some("Done"), None, None).map_err(|e| e.to_string())?;
+                    let rows = schema::update_todo(conn, &item_id, None, None, Some("Done"), None, None).map_err(|e| e.to_string())?;
+                    if rows == 0 {
+                        return Err(format!("no Todo with id {item_id}"));
+                    }
                     log(conn, "Todo", &item_id, "Completed", Actor::AI, Some("Open".into()), Some("Done".into()))?;
                 }
                 "Issue" => {
-                    schema::update_issue(conn, &item_id, None, None, Some("Done"), None, None).map_err(|e| e.to_string())?;
+                    let rows = schema::update_issue(conn, &item_id, None, None, Some("Done"), None, None).map_err(|e| e.to_string())?;
+                    if rows == 0 {
+                        return Err(format!("no Issue with id {item_id}"));
+                    }
                     log(conn, "Issue", &item_id, "Completed", Actor::AI, Some("Open".into()), Some("Done".into()))?;
                 }
                 _ => return Err("item_type must be Todo or Issue".into()),

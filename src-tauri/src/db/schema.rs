@@ -168,6 +168,10 @@ pub fn insert_todo(conn: &rusqlite::Connection, todo: &Todo) -> anyhow::Result<(
     Ok(())
 }
 
+/// Returns the number of rows matched (0 if no todo has the given id). Each
+/// `WHERE id = ?` statement matches at most one row, so we take the max across
+/// the per-field updates: the result is `0` (no such id) or `1` (matched),
+/// independent of how many fields were set. Callers can treat `0` as "not found".
 pub fn update_todo(
     conn: &rusqlite::Connection,
     id: &str,
@@ -176,39 +180,40 @@ pub fn update_todo(
     status: Option<&str>,
     priority: Option<&str>,
     assignee: Option<&str>,
-) -> anyhow::Result<()> {
+) -> anyhow::Result<usize> {
     let now = chrono::Utc::now().to_rfc3339();
+    let mut rows = 0;
     if let Some(v) = title {
-        conn.execute(
+        rows = rows.max(conn.execute(
             "UPDATE todos SET title = ?1, updated_at = ?2 WHERE id = ?3",
             params![v, now, id],
-        )?;
+        )?);
     }
     if let Some(v) = description {
-        conn.execute(
+        rows = rows.max(conn.execute(
             "UPDATE todos SET description = ?1, updated_at = ?2 WHERE id = ?3",
             params![v, now, id],
-        )?;
+        )?);
     }
     if let Some(v) = status {
-        conn.execute(
+        rows = rows.max(conn.execute(
             "UPDATE todos SET status = ?1, updated_at = ?2 WHERE id = ?3",
             params![v, now, id],
-        )?;
+        )?);
     }
     if let Some(v) = priority {
-        conn.execute(
+        rows = rows.max(conn.execute(
             "UPDATE todos SET priority = ?1, updated_at = ?2 WHERE id = ?3",
             params![v, now, id],
-        )?;
+        )?);
     }
     if let Some(v) = assignee {
-        conn.execute(
+        rows = rows.max(conn.execute(
             "UPDATE todos SET assignee = ?1, updated_at = ?2 WHERE id = ?3",
             params![v, now, id],
-        )?;
+        )?);
     }
-    Ok(())
+    Ok(rows)
 }
 
 pub fn delete_todo(conn: &rusqlite::Connection, id: &str) -> anyhow::Result<()> {
@@ -303,6 +308,9 @@ pub fn insert_issue(conn: &rusqlite::Connection, issue: &Issue) -> anyhow::Resul
     Ok(())
 }
 
+/// Returns the number of rows matched (0 if no issue has the given id). See
+/// `update_todo` for the max-across-statements rationale: the result is `0`
+/// (no such id) or `1` (matched). Callers can treat `0` as "not found".
 pub fn update_issue(
     conn: &rusqlite::Connection,
     id: &str,
@@ -311,39 +319,40 @@ pub fn update_issue(
     status: Option<&str>,
     priority: Option<&str>,
     assignee: Option<&str>,
-) -> anyhow::Result<()> {
+) -> anyhow::Result<usize> {
     let now = chrono::Utc::now().to_rfc3339();
+    let mut rows = 0;
     if let Some(v) = title {
-        conn.execute(
+        rows = rows.max(conn.execute(
             "UPDATE issues SET title = ?1, updated_at = ?2 WHERE id = ?3",
             params![v, now, id],
-        )?;
+        )?);
     }
     if let Some(v) = description {
-        conn.execute(
+        rows = rows.max(conn.execute(
             "UPDATE issues SET description = ?1, updated_at = ?2 WHERE id = ?3",
             params![v, now, id],
-        )?;
+        )?);
     }
     if let Some(v) = status {
-        conn.execute(
+        rows = rows.max(conn.execute(
             "UPDATE issues SET status = ?1, updated_at = ?2 WHERE id = ?3",
             params![v, now, id],
-        )?;
+        )?);
     }
     if let Some(v) = priority {
-        conn.execute(
+        rows = rows.max(conn.execute(
             "UPDATE issues SET priority = ?1, updated_at = ?2 WHERE id = ?3",
             params![v, now, id],
-        )?;
+        )?);
     }
     if let Some(v) = assignee {
-        conn.execute(
+        rows = rows.max(conn.execute(
             "UPDATE issues SET assignee = ?1, updated_at = ?2 WHERE id = ?3",
             params![v, now, id],
-        )?;
+        )?);
     }
-    Ok(())
+    Ok(rows)
 }
 
 pub fn delete_issue(conn: &rusqlite::Connection, id: &str) -> anyhow::Result<()> {
@@ -581,6 +590,42 @@ mod tests {
 
         delete_todo(&conn, &t.id).unwrap();
         assert!(query_todo(&conn, &t.id).unwrap().is_none());
+    }
+
+    /// Regression: `update_todo`/`update_issue` must report how many rows matched
+    /// so callers can detect a missing id. Updating a non-existent id returns
+    /// `Ok(0)` (nothing matched); updating an existing id returns `Ok(1)`.
+    /// This is what stops the MCP `update_item`/`complete_item` tools from
+    /// falsely reporting success for a stale or typo'd id.
+    #[test]
+    fn update_affected_rows_signals_missing_id_for_both_twins() {
+        let conn = test_conn();
+        let p = seed_project(&conn);
+
+        // Non-existent ids match nothing.
+        assert_eq!(
+            update_todo(&conn, "nope-123", None, None, Some("Done"), None, None).unwrap(),
+            0
+        );
+        assert_eq!(
+            update_issue(&conn, "nope-xyz", None, None, Some("Done"), None, None).unwrap(),
+            0
+        );
+
+        // Existing ids match exactly one row.
+        let t = Todo::new(p.id.clone(), "Real todo".into(), None, None, None, None);
+        insert_todo(&conn, &t).unwrap();
+        assert_eq!(
+            update_todo(&conn, &t.id, None, None, Some("Done"), None, None).unwrap(),
+            1
+        );
+
+        let i = Issue::new(p.id.clone(), "Real issue".into(), None, None, None, None);
+        insert_issue(&conn, &i).unwrap();
+        assert_eq!(
+            update_issue(&conn, &i.id, None, None, Some("Done"), None, None).unwrap(),
+            1
+        );
     }
 
     /// Regression: creating an item with status "In Progress" must persist it
