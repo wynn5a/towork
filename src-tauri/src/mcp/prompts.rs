@@ -27,7 +27,7 @@ pub fn get_prompt(conn: &Connection, name: &str) -> Result<Value, String> {
         "daily_review" => {
             let todos = schema::query_todos(conn, None, Some("Open"), None, None).map_err(|e| e.to_string())?;
             let issues = schema::query_issues(conn, None, Some("Open"), None, None).map_err(|e| e.to_string())?;
-            let recent: Vec<_> = schema::query_activity(conn, None, None, Some(10))
+            let recent: Vec<_> = schema::query_activity(conn, None, None, None, Some(10))
                 .map_err(|e| e.to_string())?
                 .into_iter()
                 .take(10)

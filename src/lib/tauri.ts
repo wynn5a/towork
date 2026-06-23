@@ -93,6 +93,9 @@ export const getActivity = (opts?: {
   itemId?: string;
   itemType?: "Todo" | "Issue";
   projectId?: string;
+  /** Scope to a single actor's rows. Omit for both actors. The AI-presence
+   *  views pass "AI" so a burst of User-actor GUI activity can't starve them. */
+  actor?: Assignee;
   /** Cap the number of rows (most-recent first). Omit for all. */
   limit?: number;
 }): Promise<ActivityLog[]> =>
@@ -100,6 +103,7 @@ export const getActivity = (opts?: {
     itemId: opts?.itemId,
     itemType: opts?.itemType,
     projectId: opts?.projectId,
+    actor: opts?.actor,
     limit: opts?.limit,
   });
 

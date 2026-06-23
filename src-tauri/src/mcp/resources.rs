@@ -36,7 +36,7 @@ pub fn read_resource(conn: &Connection, uri: &str) -> Result<Value, String> {
     if let Some(id) = uri.strip_prefix("towork://item/") {
         let todo = schema::query_todo(conn, id).map_err(|e| e.to_string())?;
         let issue = schema::query_issue(conn, id).map_err(|e| e.to_string())?;
-        let activities = schema::query_activity(conn, Some(id), None, None).map_err(|e| e.to_string())?;
+        let activities = schema::query_activity(conn, Some(id), None, None, None).map_err(|e| e.to_string())?;
         return Ok(json_content(json!({ "todo": todo, "issue": issue, "activity": activities })));
     }
     Err(format!("unknown resource uri: {uri}"))

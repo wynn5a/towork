@@ -101,12 +101,13 @@ pub fn list_tools() -> Value {
         },
         {
             "name": "get_activity",
-            "description": "Get the activity log (newest first), optionally scoped to an item or item_type. Returns at most `limit` rows; `limit` defaults to 50 to avoid serializing the entire, ever-growing log.",
+            "description": "Get the activity log (newest first), optionally scoped to an item, item_type or actor. Returns at most `limit` rows; `limit` defaults to 50 to avoid serializing the entire, ever-growing log.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
                     "item_id": { "type": "string" },
                     "item_type": { "type": "string", "enum": ["Todo", "Issue"] },
+                    "actor": { "type": "string", "enum": ["User", "AI"], "description": "Scope to a single actor's actions. Omit for both." },
                     "limit": { "type": "integer", "minimum": 1, "description": "Maximum number of most-recent rows to return. Defaults to 50." }
                 }
             }
@@ -369,6 +370,13 @@ pub fn call_tool(conn: &Connection, name: &str, args: Value) -> Result<Value, St
             if item_type.is_some() {
                 validate_item_type(item_type)?;
             }
+            // Validate the actor filter when supplied (valid = User|AI) so a
+            // typo (e.g. "Banana") errors instead of silently returning zero
+            // rows. Absent leaves the query actor-agnostic.
+            let actor = str_arg(&args, "actor");
+            if actor.is_some() {
+                normalize_assignee(actor)?;
+            }
             // Cap the result so an unscoped call doesn't serialize the entire,
             // ever-growing activity_log. Default to 50 most-recent rows when
             // `limit` is absent. A present-but-non-positive value (0, negative,
@@ -387,7 +395,7 @@ pub fn call_tool(conn: &Connection, name: &str, args: Value) -> Result<Value, St
                     n.min(1000) as i64
                 }
             };
-            let activities = schema::query_activity(conn, item_id, item_type, Some(limit))
+            let activities = schema::query_activity(conn, item_id, item_type, actor, Some(limit))
                 .map_err(|e| e.to_string())?;
             Ok(text_result(json!(activities)))
         }

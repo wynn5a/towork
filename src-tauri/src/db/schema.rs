@@ -403,6 +403,7 @@ pub fn query_activity(
     conn: &rusqlite::Connection,
     item_id: Option<&str>,
     item_type: Option<&str>,
+    actor: Option<&str>,
     limit: Option<i64>,
 ) -> anyhow::Result<Vec<ActivityLog>> {
     let mut query = String::from(
@@ -416,6 +417,15 @@ pub fn query_activity(
     if let Some(it) = item_type {
         query.push_str(" AND item_type = ?");
         args.push(Box::new(it.to_string()));
+    }
+    // Actor filter: source actor-scoped views (e.g. the AI-presence sidebar
+    // strip and the per-item "AI touched" wash) from `actor = 'AI'` rows
+    // directly. Without this they were derived from an actor-agnostic recent
+    // window, so a burst of User-actor GUI activity could fill that window and
+    // starve the AI signal exactly when the human was busiest.
+    if let Some(ac) = actor {
+        query.push_str(" AND actor = ?");
+        args.push(Box::new(ac.to_string()));
     }
     query.push_str(" ORDER BY created_at DESC");
     // Bound the result for callers that only render a few recent rows (e.g. the
@@ -744,7 +754,7 @@ mod tests {
             ),
         )
         .unwrap();
-        let logged = query_activity(&conn, Some(&t.id), None, None).unwrap();
+        let logged = query_activity(&conn, Some(&t.id), None, None, None).unwrap();
         let completed = logged.iter().find(|a| a.action == "Completed").unwrap();
         assert_eq!(completed.old_value.as_deref(), Some("In Progress"));
         assert_eq!(completed.new_value.as_deref(), Some("Done"));
@@ -770,7 +780,7 @@ mod tests {
             ),
         )
         .unwrap();
-        let logged_i = query_activity(&conn, Some(&i.id), None, None).unwrap();
+        let logged_i = query_activity(&conn, Some(&i.id), None, None, None).unwrap();
         let completed_i = logged_i.iter().find(|a| a.action == "Completed").unwrap();
         assert_eq!(completed_i.old_value.as_deref(), Some("In Progress"));
         assert_eq!(completed_i.new_value.as_deref(), Some("Done"));
@@ -883,21 +893,30 @@ mod tests {
         );
         insert_activity(&conn, &log2).unwrap();
 
-        assert_eq!(query_activity(&conn, None, None, None).unwrap().len(), 2);
+        assert_eq!(query_activity(&conn, None, None, None, None).unwrap().len(), 2);
         assert_eq!(
-            query_activity(&conn, Some("item-1"), None, None).unwrap().len(),
+            query_activity(&conn, Some("item-1"), None, None, None).unwrap().len(),
             1
         );
         assert_eq!(
-            query_activity(&conn, None, Some("Issue"), None).unwrap().len(),
+            query_activity(&conn, None, Some("Issue"), None, None).unwrap().len(),
             1
         );
         assert_eq!(
-            query_activity(&conn, Some("item-1"), Some("Issue"), None).unwrap().len(),
+            query_activity(&conn, Some("item-1"), Some("Issue"), None, None).unwrap().len(),
             0
         );
+        // Actor filter narrows to a single actor's rows.
+        assert_eq!(
+            query_activity(&conn, None, None, Some("User"), None).unwrap().len(),
+            1
+        );
+        assert_eq!(
+            query_activity(&conn, None, None, Some("AI"), None).unwrap().len(),
+            1
+        );
         // LIMIT caps the result set for callers that only render a few rows.
-        assert_eq!(query_activity(&conn, None, None, Some(1)).unwrap().len(), 1);
+        assert_eq!(query_activity(&conn, None, None, None, Some(1)).unwrap().len(), 1);
     }
 
     /// Regression: `query_activity` with a `LIMIT` must return at most N rows,
@@ -925,10 +944,10 @@ mod tests {
         }
 
         // No limit: all rows.
-        assert_eq!(query_activity(&conn, None, None, None).unwrap().len(), 5);
+        assert_eq!(query_activity(&conn, None, None, None, None).unwrap().len(), 5);
 
         // Limit caps the count.
-        let limited = query_activity(&conn, None, None, Some(3)).unwrap();
+        let limited = query_activity(&conn, None, None, None, Some(3)).unwrap();
         assert_eq!(limited.len(), 3);
 
         // ...and yields the most recent rows, newest first (item-4, 3, 2).
@@ -936,7 +955,64 @@ mod tests {
         assert_eq!(ids, vec!["item-4", "item-3", "item-2"]);
 
         // A limit larger than the row count returns everything (no padding).
-        assert_eq!(query_activity(&conn, None, None, Some(100)).unwrap().len(), 5);
+        assert_eq!(query_activity(&conn, None, None, None, Some(100)).unwrap().len(), 5);
+    }
+
+    /// Regression for the AI-presence bug: the actor-scoped query must return
+    /// only that actor's rows even when the other actor's rows are far newer and
+    /// far more numerous. The sidebar AI strip and the per-item "AI touched" wash
+    /// source from `actor = 'AI'` rows directly; previously they were derived
+    /// from an actor-agnostic recent window, so a burst of User-actor GUI
+    /// activity would push every AI row out of that window and the AI signal
+    /// would go dark exactly when the human was busiest.
+    #[test]
+    fn activity_actor_filter_survives_user_burst() {
+        let conn = test_conn();
+
+        // A few AI rows first (oldest), with explicit timestamps so ordering is
+        // deterministic (a tight loop could otherwise share a sub-second stamp).
+        for i in 0..3 {
+            let mut log = ActivityLog::new(
+                "Todo".into(),
+                format!("ai-{i}"),
+                "Created".into(),
+                Actor::AI,
+                None,
+                None,
+            );
+            log.created_at = format!("2026-01-01T00:00:0{i}Z");
+            insert_activity(&conn, &log).unwrap();
+        }
+        // Then a large burst of NEWER User rows — enough to fill (and overflow) a
+        // 50-row actor-agnostic window and push every AI row out of it.
+        for i in 0..60 {
+            let mut log = ActivityLog::new(
+                "Todo".into(),
+                format!("user-{i}"),
+                "Created".into(),
+                Actor::User,
+                None,
+                None,
+            );
+            log.created_at = format!("2026-02-01T00:{:02}:00Z", i);
+            insert_activity(&conn, &log).unwrap();
+        }
+
+        // Actor-agnostic, limited like the general feed: AI rows are starved out.
+        let agnostic = query_activity(&conn, None, None, None, Some(50)).unwrap();
+        assert_eq!(agnostic.len(), 50);
+        assert!(
+            agnostic.iter().all(|a| a.actor == "User"),
+            "a 50-row actor-agnostic window is entirely User rows after the burst",
+        );
+
+        // Actor-scoped: every AI row comes back regardless of the User burst.
+        let ai = query_activity(&conn, None, None, Some("AI"), Some(50)).unwrap();
+        assert_eq!(ai.len(), 3, "all AI rows survive the User burst");
+        assert!(ai.iter().all(|a| a.actor == "AI"));
+        let ids: Vec<&str> = ai.iter().map(|a| a.item_id.as_str()).collect();
+        // Newest-first within the AI scope.
+        assert_eq!(ids, vec!["ai-2", "ai-1", "ai-0"]);
     }
 
     #[test]
@@ -1060,12 +1136,12 @@ mod tests {
         )
         .unwrap();
 
-        let todo_acts = query_activity(&conn, Some(&t.id), None, None).unwrap();
+        let todo_acts = query_activity(&conn, Some(&t.id), None, None, None).unwrap();
         assert_eq!(todo_acts.len(), 1);
         assert_eq!(todo_acts[0].action, "Deleted");
         assert_eq!(todo_acts[0].new_value.as_deref(), Some("doomed todo"));
 
-        let issue_acts = query_activity(&conn, Some(&i.id), None, None).unwrap();
+        let issue_acts = query_activity(&conn, Some(&i.id), None, None, None).unwrap();
         assert_eq!(issue_acts.len(), 1);
         assert_eq!(issue_acts[0].action, "Deleted");
     }

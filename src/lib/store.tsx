@@ -50,7 +50,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [projects, setProjects] = useState<Project[]>([]);
   const [todos, setTodos] = useState<Todo[]>([]);
   const [issues, setIssues] = useState<Issue[]>([]);
-  const [activity, setActivity] = useState<ActivityLog[]>([]);
+  // AI-only activity, fetched actor-scoped so a burst of User-actor GUI rows can
+  // never push AI rows out of view (an actor-agnostic recent window could fill
+  // with User rows and hide all AI activity — the bug this fixes). The sidebar
+  // strip and the per-item "AI touched" wash both source from this. The full,
+  // actor-agnostic activity feed is fetched independently by ActivityTimeline.
+  const [aiActivity, setAiActivity] = useState<ActivityLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [toasts, setToasts] = useState<Toast[]>([]);
   const toastSeq = useRef(0);
@@ -61,18 +66,22 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const aiClearTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
   const reload = useCallback(async () => {
-    const [p, t, i, a] = await Promise.all([
+    const [p, t, i, ai] = await Promise.all([
       listProjects(),
       listTodos(),
       listIssues(),
-      // Activity is supporting chrome; never let it fail the core data load.
-      // Bounded so an ever-growing log isn't shipped in full on every change.
-      getActivity({ limit: 50 }).catch(() => [] as ActivityLog[]),
+      // AI-presence chrome; never let it fail the core data load. Fetched
+      // actor-scoped (actor: "AI") so a burst of User-actor GUI rows can't
+      // starve it — an actor-agnostic recent window could fill with User rows
+      // and hide all AI activity. 30 comfortably covers the sidebar's
+      // slice(0,3) and the per-item "AI touched" wash diff, and stays bounded
+      // so an ever-growing log isn't shipped in full on every change.
+      getActivity({ actor: "AI", limit: 30 }).catch(() => [] as ActivityLog[]),
     ]);
     setProjects(p);
     setTodos(t);
     setIssues(i);
-    setActivity(a);
+    setAiActivity(ai);
     setLoading(false);
   }, []);
 
@@ -100,20 +109,22 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const seqMap = useMemo(() => buildSeqMap(projects, items), [projects, items]);
 
-  // Newest-first AI actions for the Home strip. Derived from the same `activity`
-  // that reload() refreshes alongside items, so labels resolve consistently.
+  // Newest-first AI actions for the Home strip. Sourced from the actor-scoped
+  // `aiActivity` window (refreshed in the same reload() as items) so a burst of
+  // User-actor GUI rows can't starve it. Already AI-only from the query.
   const recentAiActivity = useMemo(
-    () => activity.filter((a) => a.actor === "AI").slice(0, 3),
-    [activity],
+    () => aiActivity.slice(0, 3),
+    [aiActivity],
   );
 
   // Flag items the AI teammate just touched so their rows can acknowledge the
-  // change in place (the live counterpart to the sidebar pulse). Diffs the AI
-  // activity ids against what we've already seen; only genuinely new actions
-  // light up, and only AI ones — GUI (actor: User) edits never flash. Each
-  // touch auto-clears after ~1.8s so the cue recedes on its own.
+  // change in place (the live counterpart to the sidebar pulse). Diffs the
+  // actor-scoped AI window against what we've already seen; only genuinely new
+  // actions light up, and only AI ones — GUI (actor: User) edits never flash
+  // (they're not in this window). Each touch auto-clears after ~1.8s so the cue
+  // recedes on its own.
   useEffect(() => {
-    const aiRows = activity.filter((a) => a.actor === "AI");
+    const aiRows = aiActivity;
     if (seenAiIds.current === null) {
       seenAiIds.current = new Set(aiRows.map((a) => a.id)); // baseline — stay quiet
       return;
@@ -126,7 +137,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       if (a.item_id) touched.push(a.item_id);
     }
     if (touched.length === 0) return;
-    // The activity feed is capped at 50; keep `seen` from growing without bound
+    // The AI window is capped (30); keep `seen` from growing without bound
     // across a long session while still covering the whole current window (so a
     // pruned id can never resurface as "fresh" and re-flash).
     if (seen.size > 400) seenAiIds.current = new Set(aiRows.map((a) => a.id));
@@ -153,7 +164,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         }, 1800),
       );
     }
-  }, [activity]);
+  }, [aiActivity]);
 
   // Drop any pending acknowledgement timers on unmount.
   useEffect(() => {
