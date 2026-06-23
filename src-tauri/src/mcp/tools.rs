@@ -2,7 +2,9 @@ use rusqlite::Connection;
 use serde_json::{json, Value};
 
 use crate::db::schema;
-use crate::models::{activity::ActivityLog, issue::Issue, normalize_status, todo::Todo, Actor};
+use crate::models::{
+    activity::ActivityLog, issue::Issue, normalize_status, todo::Todo, validate_title, Actor,
+};
 
 /// JSON-Schema tool definitions advertised to MCP clients.
 pub fn list_tools() -> Value {
@@ -145,7 +147,8 @@ pub fn call_tool(conn: &Connection, name: &str, args: Value) -> Result<Value, St
         "create_item" => {
             let project_id = require(&args, "project_id")?.to_string();
             let item_type = require(&args, "item_type")?;
-            let title = require(&args, "title")?.to_string();
+            // Reject a blank / whitespace-only title and store the trimmed value.
+            let title = validate_title(require(&args, "title")?)?;
             let description = owned(&args, "description");
             // Status is optional and defaults to "Open"; reject an invalid value.
             let status = normalize_status(str_arg(&args, "status"))?;
@@ -175,7 +178,12 @@ pub fn call_tool(conn: &Connection, name: &str, args: Value) -> Result<Value, St
         "update_item" => {
             let item_id = require(&args, "item_id")?.to_string();
             let item_type = require(&args, "item_type")?;
-            let title = owned(&args, "title");
+            // When a title is supplied, reject blank / whitespace-only and store
+            // the trimmed value; an absent title leaves the existing one alone.
+            let title = match str_arg(&args, "title") {
+                Some(t) => Some(validate_title(t)?),
+                None => None,
+            };
             let description = owned(&args, "description");
             let status = owned(&args, "status");
             let priority = owned(&args, "priority");

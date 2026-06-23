@@ -1,7 +1,7 @@
 use tauri::State;
 
 use crate::db::{schema, DbState};
-use crate::models::{activity::ActivityLog, normalize_status, todo::Todo, Actor};
+use crate::models::{activity::ActivityLog, normalize_status, todo::Todo, validate_title, Actor};
 
 #[tauri::command]
 pub fn list_todos(
@@ -41,6 +41,9 @@ pub fn create_todo(
     let conn = state.conn.lock().map_err(|e| e.to_string())?;
     let actor = Actor::from_str(assignee.as_deref().unwrap_or("User"));
     let status = normalize_status(status.as_deref())?;
+    // Reject a blank / whitespace-only title and store the trimmed value, so the
+    // GUI write path agrees with MCP at the data layer.
+    let title = validate_title(&title)?;
     let todo = Todo::new(project_id, title, description, Some(status), priority, Some(actor));
     schema::insert_todo(&conn, &todo).map_err(|e| e.to_string())?;
 
@@ -71,6 +74,13 @@ pub fn update_todo(
 ) -> Result<(), String> {
     let conn = state.conn.lock().map_err(|e| e.to_string())?;
     let old = schema::query_todo(&conn, &id).map_err(|e| e.to_string())?;
+
+    // When a title is supplied, reject blank / whitespace-only and store the
+    // trimmed value; an absent title leaves the existing one alone.
+    let title = match title {
+        Some(t) => Some(validate_title(&t)?),
+        None => None,
+    };
 
     schema::update_todo(
         &conn,

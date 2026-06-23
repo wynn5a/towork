@@ -20,6 +20,18 @@ pub fn normalize_status(status: Option<&str>) -> Result<String, String> {
     }
 }
 
+/// Validate a caller-supplied item title. Trims surrounding whitespace and
+/// returns the trimmed value, or `Err` when the trimmed title is empty so a
+/// blank / whitespace-only title is rejected rather than stored as an unusable
+/// blank row.
+pub fn validate_title(title: &str) -> Result<String, String> {
+    let trimmed = title.trim();
+    if trimmed.is_empty() {
+        return Err("title must not be empty".into());
+    }
+    Ok(trimmed.to_string())
+}
+
 #[derive(Debug, Clone, Copy, serde::Serialize, serde::Deserialize, PartialEq)]
 pub enum Actor {
     User,
@@ -63,6 +75,23 @@ mod tests {
         assert!(normalize_status(Some("in progress")).is_err()); // case-sensitive
         assert!(normalize_status(Some("Bogus")).is_err());
         assert!(normalize_status(Some("")).is_err());
+    }
+
+    #[test]
+    fn validate_title_rejects_blank() {
+        assert!(validate_title("").is_err());
+        assert!(validate_title("   ").is_err()); // whitespace-only
+        assert!(validate_title("\t\n").is_err()); // other whitespace
+    }
+
+    #[test]
+    fn validate_title_accepts_normal_title() {
+        assert_eq!(validate_title("Buy milk").unwrap(), "Buy milk");
+    }
+
+    #[test]
+    fn validate_title_trims_surrounding_whitespace() {
+        assert_eq!(validate_title("  hi  ").unwrap(), "hi");
     }
 
     #[test]

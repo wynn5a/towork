@@ -2,7 +2,7 @@ use tauri::State;
 
 use crate::commands::todos::log_item_changes;
 use crate::db::{schema, DbState};
-use crate::models::{activity::ActivityLog, issue::Issue, normalize_status, Actor};
+use crate::models::{activity::ActivityLog, issue::Issue, normalize_status, validate_title, Actor};
 
 #[tauri::command]
 pub fn list_issues(
@@ -42,6 +42,9 @@ pub fn create_issue(
     let conn = state.conn.lock().map_err(|e| e.to_string())?;
     let actor = Actor::from_str(assignee.as_deref().unwrap_or("User"));
     let status = normalize_status(status.as_deref())?;
+    // Reject a blank / whitespace-only title and store the trimmed value, so the
+    // GUI write path agrees with MCP at the data layer.
+    let title = validate_title(&title)?;
     let issue = Issue::new(project_id, title, description, Some(status), priority, Some(actor));
     schema::insert_issue(&conn, &issue).map_err(|e| e.to_string())?;
 
@@ -72,6 +75,13 @@ pub fn update_issue(
 ) -> Result<(), String> {
     let conn = state.conn.lock().map_err(|e| e.to_string())?;
     let old = schema::query_issue(&conn, &id).map_err(|e| e.to_string())?;
+
+    // When a title is supplied, reject blank / whitespace-only and store the
+    // trimmed value; an absent title leaves the existing one alone.
+    let title = match title {
+        Some(t) => Some(validate_title(&t)?),
+        None => None,
+    };
 
     schema::update_issue(
         &conn,
