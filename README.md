@@ -19,7 +19,7 @@ SQLite file. No account, no cloud, no telemetry.
 
 <br />
 
-<img src="docs/screenshot.png" alt="Towork's Todos view: a dark, keyboard-driven desktop UI with a project sidebar, todos showing derived IDs like TOW-3, items assigned to Claude, and a 'Claude connected · via MCP' status footer." width="840" />
+<img src="docs/screenshot.png" alt="Towork's Home view: a dark, keyboard-driven desktop UI with a project sidebar (WORK, TOWORK), Open / In Progress / Done tabs over a list of items with derived IDs like TOW-79, a live Claude activity feed, and an 'MCP server live · 127.0.0.1:4127' status footer." width="840" />
 
 </div>
 
