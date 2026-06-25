@@ -43,14 +43,21 @@ makes the AI a teammate that *does* the work in the same surface you do:
 
 ## Download
 
-Grab a prebuilt installer for your platform from the
-**[Releases page](https://github.com/wynn5a/towork/releases/latest)**:
+Download the latest build for your platform. Each link points at the
+**[latest release](https://github.com/wynn5a/towork/releases/latest)** channel:
 
-[![Download the latest release](https://img.shields.io/github/v/release/wynn5a/towork?label=Download&sort=semver)](https://github.com/wynn5a/towork/releases/latest)
+[![Latest release](https://img.shields.io/github/v/release/wynn5a/towork?label=latest&sort=semver)](https://github.com/wynn5a/towork/releases/latest)
 
-- **macOS** — `.dmg`
-- **Windows** — `.msi` / `.exe`
-- **Linux** — `.AppImage` / `.deb`
+| OS | Architecture | Package |
+| --- | --- | --- |
+| **macOS** | Apple Silicon (`arm64`) | [`.dmg`](https://github.com/wynn5a/towork/releases/latest/download/Towork_0.7.0_aarch64.dmg) |
+| **macOS** | Intel (`x86_64`) | [`.dmg`](https://github.com/wynn5a/towork/releases/latest/download/Towork_0.7.0_x64.dmg) |
+| **Windows** | `x64` | [`.msi`](https://github.com/wynn5a/towork/releases/latest/download/Towork_0.7.0_x64_en-US.msi) · [`.exe`](https://github.com/wynn5a/towork/releases/latest/download/Towork_0.7.0_x64-setup.exe) |
+| **Linux** | `x86_64` | [`.AppImage`](https://github.com/wynn5a/towork/releases/latest/download/Towork_0.7.0_amd64.AppImage) · [`.deb`](https://github.com/wynn5a/towork/releases/latest/download/Towork_0.7.0_amd64.deb) · [`.rpm`](https://github.com/wynn5a/towork/releases/latest/download/Towork-0.7.0-1.x86_64.rpm) |
+
+> Links use the `releases/latest/download/` channel. If a direct link 404s after a
+> new version, the filename changed — grab it from the
+> [latest release page](https://github.com/wynn5a/towork/releases/latest).
 
 Prefer to build it yourself? See [Quick start](#quick-start) below.
 
