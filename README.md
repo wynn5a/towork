@@ -41,6 +41,19 @@ makes the AI a teammate that *does* the work in the same surface you do:
 - **Built for the keyboard.** A command palette (`⌘K`), a distraction-free Simple
   Mode, and a dark "Data Buddy" design system.
 
+## Download
+
+Grab a prebuilt installer for your platform from the
+**[Releases page](https://github.com/wynn5a/towork/releases/latest)**:
+
+[![Download the latest release](https://img.shields.io/github/v/release/wynn5a/towork?label=Download&sort=semver)](https://github.com/wynn5a/towork/releases/latest)
+
+- **macOS** — `.dmg`
+- **Windows** — `.msi` / `.exe`
+- **Linux** — `.AppImage` / `.deb`
+
+Prefer to build it yourself? See [Quick start](#quick-start) below.
+
 ## Stack
 
 - **Frontend:** React 19 + TypeScript + Vite + Tailwind 4, React Router. Dark
