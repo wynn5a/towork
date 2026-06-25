@@ -129,10 +129,3 @@ same binary also speaks MCP over stdio:
 ```
 
 During development: `cd src-tauri && cargo run -- --mcp`.
-
-## Packaging icons
-
-`pnpm tauri build` (full installers) needs a complete icon set including
-`.icns`/`.ico`. Generate one from a source image with `pnpm tauri icon path/to/source.png`.
-The committed PNGs under `src-tauri/icons/` (from `gen_icons.py`) are sufficient
-for `tauri dev` and `cargo build`.
