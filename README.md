@@ -1,23 +1,56 @@
+<div align="center">
+
 # Towork
 
-A Tauri 2 desktop task manager where **AI is a first-class teammate**. You and
-Claude work the same projects, todos, and issues — Claude participates through an
-embedded **MCP server**, not a chat box. Local-first SQLite storage, a dark,
-keyboard-driven UI built from the `ux/` design system.
+### A local-first desktop task manager where **AI is a first-class teammate**
+
+You and Claude work the *same* projects, todos, and issues — Claude joins through an
+embedded **MCP server**, not a bolted-on chat box. Everything lives in one local
+SQLite file. No account, no cloud, no telemetry.
+
+<br />
+
+![Tauri](https://img.shields.io/badge/Tauri-2-24C8DB?logo=tauri&logoColor=white)
+![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=000)
+![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)
+![Rust](https://img.shields.io/badge/Rust-stable-000?logo=rust&logoColor=white)
+![SQLite](https://img.shields.io/badge/SQLite-bundled-003B57?logo=sqlite&logoColor=white)
+![MCP](https://img.shields.io/badge/MCP-JSON--RPC%202.0-7C3AED)
+
+<br />
+
+<img src="docs/screenshot.png" alt="Towork's Todos view: a dark, keyboard-driven desktop UI with a project sidebar, todos showing derived IDs like TOW-3, items assigned to Claude, and a 'Claude connected · via MCP' status footer." width="840" />
+
+</div>
+
+## Why Towork
+
+Most task managers treat an assistant as a sidecar that *talks about* your work. Towork
+makes the AI a teammate that *does* the work in the same surface you do:
+
+- **One shared source of truth.** The GUI and the AI mutate the **same** SQLite
+  database — no sync, no API round-trip, no second copy of your tasks.
+- **Every change is attributed.** Mutations from the GUI are logged as **User**;
+  mutations over MCP are logged as **AI** — so the activity log reads like a
+  changelog of who did what.
+- **The UI reacts to the AI in real time.** When Claude creates or updates an item
+  over MCP, the running app **live-refreshes** (via a `towork:changed` event) —
+  watch tasks move while the AI works.
+- **Local-first and private.** A single SQLite file on your machine. No account,
+  no cloud, no telemetry.
+- **Built for the keyboard.** A command palette (`⌘K`), a distraction-free Simple
+  Mode, and a dark "Data Buddy" design system.
 
 ## Stack
 
 - **Frontend:** React 19 + TypeScript + Vite + Tailwind 4, React Router. Dark
   "Data Buddy" design system (`src/styles/`).
 - **Backend:** Rust + Tauri 2, `rusqlite` (bundled SQLite), `serde`.
-- **AI integration:** an embedded JSON-RPC MCP server over stdio.
+- **AI integration:** an embedded JSON-RPC 2.0 MCP server, over both HTTP and stdio.
 
-## Prerequisites
+## Quick start
 
-- Node 20+ and `pnpm`
-- Rust toolchain (`cargo`, stable)
-
-## Develop
+**Prerequisites:** Node 20+ with `pnpm`, and a stable Rust toolchain (`cargo`).
 
 ```bash
 pnpm install
@@ -28,6 +61,7 @@ Other scripts:
 
 ```bash
 pnpm build          # type-check + production web build
+pnpm test           # Vitest + React Testing Library suite
 pnpm tauri build    # package the desktop app (needs a full icon set; see below)
 ```
 
@@ -39,10 +73,14 @@ created and migrated on first launch.
 
 ## Keyboard
 
-- `⌘K` / `Ctrl+K` — command palette
-- double-tap `Shift` — toggle **Simple Mode** (distraction-free flat todo list)
-- In Simple Mode: `↑`/`↓` navigate, `Enter` complete, `Esc` exit
-- In editors: `⌘↵` save, `Esc` close
+| Shortcut | Action |
+| --- | --- |
+| `⌘K` / `Ctrl+K` | Open the command palette |
+| double-tap `Shift` | Toggle **Simple Mode** (distraction-free flat todo list) |
+| `↑` / `↓` | Navigate items (Simple Mode) |
+| `Enter` | Complete the focused item (Simple Mode) |
+| `Esc` | Exit Simple Mode / close an editor |
+| `⌘↵` | Save (in editors) |
 
 ## MCP integration
 
